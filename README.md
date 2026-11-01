@@ -1,33 +1,39 @@
 # Tor-phone
 
-Tor-phone is an Android privacy project intended to route device application traffic through a user-controlled VPN/Tor architecture.
+Android privacy connection manager prototype built with native Java.
 
-## Project status
+## Current status
 
-**Phase 1 — planning and project skeleton.** This repository is being initialized. No working VPN, Tor, traffic-routing, GPS-masking, or leak-protection engine is implemented yet.
+**Phase 1 UI and documentation scaffold.** The repository contains an Android Gradle project, a privacy dashboard shell, product requirements, architecture notes, and a security plan.
 
-## Initial requirements
+**Not yet implemented:** VPN tunnel, Tor service, device-wide traffic routing, provider/server catalog, DNS/IP leak protection, automatic kill switch, or verified fail-closed behavior. The Connect button is intentionally informational and does not claim to protect traffic.
 
-- Android-only application, initially implemented in native Java.
-- One coordinated Android `VpnService` for device-wide routing.
-- User-selectable VPN and Tor modes, with a future combined Tor-over-VPN mode.
-- Manual location/server rotation by default.
-- Prefer safe handover when supported; otherwise retain the existing tunnel or fail closed rather than silently sending traffic outside the tunnel.
-- Location privacy controls must respect Android permission boundaries and remain transparent and user-controlled.
-- Never commit VPN credentials, private keys, or other secrets.
+## Product decisions
 
-## Planned phases
+- Android first; native Java.
+- VPN and Tor are separate modes, with Tor-over-VPN considered as a later explicit mode.
+- Device-wide routing is the goal, subject to Android's VPN/profile limits.
+- Manual server/circuit changes by default.
+- Safe handover where supported; otherwise keep the old tunnel or block rather than silently bypass protection.
+- Minimal permissions. No location permission is required for core VPN routing.
 
-1. Requirements, architecture, security model, and Android project skeleton.
-2. Main application UI and settings.
-3. VPN provider integration and tunnel lifecycle.
-4. Tor integration and coordinated routing.
-5. DNS/IP leak testing, fail-closed behavior, and device testing.
+## Servers and providers
 
-## Important limitations
+Tor uses the public Tor network; it does not require us to invent or operate private Tor servers.
 
-A VPN changes the public network route; it does not change GPS, device identifiers, account identity, or every other location signal. Android does not let an ordinary app silently revoke other apps' location permissions or force all apps to report a VPN server's location.
+VPN requires a real provider endpoint and valid user/provider configuration. The app will support a documented provider integration or user-imported WireGuard profile. Free VPN plans commonly restrict countries, bandwidth, protocol, or devices. Unknown public VPN servers are not trusted and will not be bundled as secure. Never commit credentials or private keys.
 
-## Development
+## Privacy limits
 
-The Android build configuration and implementation will be added in subsequent commits. Do not treat this planning repository as a functioning privacy or VPN application.
+A VPN changes public network egress, not GPS, cell/Wi-Fi observations, device identifiers, account identity, or browser fingerprint. Android does not allow an ordinary app to silently grant/revoke other apps' permissions or force them to report the VPN server's location.
+
+## Repository guide
+
+- `app/src/main/java/org/torphone/app/MainActivity.java` — dashboard UI shell
+- `docs/REQUIREMENTS.md` — product requirements
+- `docs/ARCHITECTURE.md` — target connection architecture
+- `docs/SECURITY-PLAN.md` — threat model and verification plan
+
+## Build
+
+Open the repository in Android Studio and sync the Gradle project. Build/debug on a real Android device before treating any feature as operational. This repository has not yet been built or device-tested in this development step.
