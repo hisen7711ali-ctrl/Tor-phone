@@ -33,6 +33,7 @@ A VPN changes public network egress, not GPS, cell/Wi-Fi observations, device id
 - `docs/REQUIREMENTS.md` — product requirements
 - `docs/ARCHITECTURE.md` — target connection architecture
 - `docs/SECURITY-PLAN.md` — threat model and verification plan
+- `docs/PROVIDER-OPTIONS.md` — review of free VPN and Tor infrastructure
 
 ## Build
 
