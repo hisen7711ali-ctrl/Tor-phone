@@ -1,4 +1,11 @@
-pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
-dependencyResolutionManagement { repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS); repositories { google(); mavenCentral() } }
+pluginManagement {
+    repositories { google(); mavenCentral(); gradlePluginPortal() }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories { google(); mavenCentral() }
+}
 rootProject.name = "Tor-phone"
 include(":app")
+include(":onionmasq")
+project(":onionmasq").projectDir = file("third_party/onionmasq/vendor/android/OnionmasqAndroid/onionmasq")

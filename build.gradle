@@ -1,1 +1,22 @@
-plugins { id 'com.android.application' version '8.7.3' apply false }
+plugins {
+    id 'com.android.application' version '8.7.3' apply false
+    id 'com.android.library' version '8.7.3' apply false
+}
+
+ext {
+    MIN_SDK_VERSION = 26
+    TARGET_SDK_VERSION = 35
+    LIBRARY_GROUP = "org.torproject"
+    LIBRARY_ARTIFACT_ID = "onionmasq"
+    LIBRARY_VERSION_NAME = "0.9.1"
+    LIBRARY_URL = "https://gitlab.torproject.org/tpo/core/onionmasq"
+    LIBRARY_GIT_URL = "https://gitlab.torproject.org/tpo/core/onionmasq"
+}
+
+subprojects {
+    afterEvaluate {
+        if (project.name == "onionmasq") {
+            dependencies.add("implementation", "androidx.lifecycle:lifecycle-livedata:2.9.1")
+        }
+    }
+}

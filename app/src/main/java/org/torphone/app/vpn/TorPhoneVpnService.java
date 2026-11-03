@@ -5,142 +5,153 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Intent;
 import android.net.VpnService;
+import android.os.Binder;
 import android.os.Build;
+import android.os.IBinder;
 import android.os.ParcelFileDescriptor;
 
-import java.io.EOFException;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
+import org.torproject.onionmasq.ISocketProtect;
+import org.torproject.onionmasq.OnionMasq;
+
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/**
- * Owns Tor-phone's Android VPN interface.
- *
- * The TUN reader is real, but no packet router is installed until a Tor
- * transport and a compatible packet bridge are selected and integrated.
- * The default router therefore fails closed instead of leaking traffic.
- */
 public final class TorPhoneVpnService extends VpnService {
     public static final String ACTION_START = "org.torphone.app.vpn.START";
     public static final String ACTION_STOP = "org.torphone.app.vpn.STOP";
+    public static final String ACTION_STATUS = "org.torphone.app.vpn.STATUS";
+    public static final String EXTRA_STATUS = "status";
 
     private static final String CHANNEL_ID = "tor_phone_vpn";
     private static final int NOTIFICATION_ID = 7001;
     private static final int TUN_MTU = 1500;
-    private static final int MAX_PACKET_SIZE = 32767;
 
-    private final AtomicBoolean packetLoopRunning = new AtomicBoolean(false);
-    private final PacketRouter packetRouter = new UnconfiguredPacketRouter();
+    private final OnionmasqRouter packetRouter = new OnionmasqRouter();
+    private final AtomicBoolean startupInProgress = new AtomicBoolean(false);
+    private final IBinder serviceBinder = new ServiceBinder(this);
 
     private ParcelFileDescriptor tunInterface;
-    private Thread packetThread;
+    private volatile boolean onionmasqBound;
+
+    private static final class ServiceBinder extends Binder implements ISocketProtect {
+        private final WeakReference<TorPhoneVpnService> service;
+
+        ServiceBinder(TorPhoneVpnService owner) {
+            service = new WeakReference<>(owner);
+        }
+
+        @Override
+        public boolean protect(int socket) {
+            TorPhoneVpnService owner = service.get();
+            return owner != null && owner.protectSocket(socket);
+        }
+    }
 
     @Override
     public void onCreate() {
         super.onCreate();
         createNotificationChannel();
+        packetRouter.setFailureListener(error -> {
+            publishStatus("فشل المحرك: توقف Onionmasq");
+            stopSelf();
+        });
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        if (intent != null && "android.net.VpnService".equals(intent.getAction())) {
+            return super.onBind(intent);
+        }
+        return serviceBinder;
+    }
+
+    private boolean protectSocket(int socket) {
+        return super.protect(socket);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent == null || ACTION_STOP.equals(intent.getAction())) {
+        String action = intent == null ? null : intent.getAction();
+        if (ACTION_STOP.equals(action)) {
             stopTunnel();
             stopSelf(startId);
             return START_NOT_STICKY;
         }
-
-        if (!ACTION_START.equals(intent.getAction())) {
+        if (!ACTION_START.equals(action)) {
             stopSelf(startId);
             return START_NOT_STICKY;
         }
 
-        startForeground(NOTIFICATION_ID, buildNotification());
-
-        try {
-            establishTunInterface();
-            startPacketLoop();
-        } catch (Exception error) {
-            stopTunnel();
+        // Native loading and Arti initialization must succeed before TUN exists.
+        if (packetRouter.init(getApplicationContext()) != OnionmasqRouter.INIT_OK) {
+            publishStatus("فشل المحرك: " + OnionmasqRouter.loadFailureMessage());
             stopSelf(startId);
+            return START_NOT_STICKY;
         }
 
+        if (!onionmasqBound) {
+            try {
+                OnionMasq.bindVPNService(TorPhoneVpnService.class);
+                onionmasqBound = true;
+            } catch (Throwable error) {
+                publishStatus("فشل المحرك: تعذر ربط خدمة حماية المقابس");
+                stopSelf(startId);
+                return START_NOT_STICKY;
+            }
+        }
+
+        startForeground(NOTIFICATION_ID, buildNotification("محرك Tor قيد التهيئة"));
+        if (startupInProgress.compareAndSet(false, true)) {
+            new Thread(() -> startTunnel(startId), "TorPhone-VPN-Startup").start();
+        }
         return START_NOT_STICKY;
     }
 
-    private void establishTunInterface() throws IOException {
-        if (tunInterface != null) {
-            return;
-        }
-
-        Builder builder = new Builder()
-                .setSession("Tor-phone")
-                .setMtu(TUN_MTU)
-                .addAddress("10.77.0.2", 32)
-                .addAddress("fd77:7070:7070::2", 128)
-                .addRoute("0.0.0.0", 0)
-                .addRoute("::", 0)
-                .addDnsServer("10.77.0.1")
-                .addDnsServer("fd77:7070:7070::1");
-
-        tunInterface = builder.establish();
-        if (tunInterface == null) {
-            throw new IOException("Android did not establish the VPN interface");
-        }
-    }
-
-    private void startPacketLoop() throws IOException {
-        if (tunInterface == null) {
-            throw new IOException("TUN interface is not established");
-        }
-        if (!packetLoopRunning.compareAndSet(false, true)) {
-            return;
-        }
-
-        FileInputStream tunInput =
-                new FileInputStream(tunInterface.getFileDescriptor());
-        FileOutputStream tunOutput =
-                new FileOutputStream(tunInterface.getFileDescriptor());
-
-        packetThread = new Thread(
-                () -> readAndRoutePackets(tunInput, tunOutput),
-                "TorPhone-TUN-Reader"
-        );
-        packetThread.start();
-    }
-
-    private void readAndRoutePackets(
-            FileInputStream tunInput,
-            FileOutputStream tunOutput
-    ) {
-        byte[] packetBuffer = new byte[MAX_PACKET_SIZE];
-
+    private void startTunnel(int startId) {
         try {
-            while (packetLoopRunning.get()) {
-                int packetLength = tunInput.read(packetBuffer);
-                if (packetLength < 0) {
-                    throw new EOFException("TUN interface reached end of stream");
-                }
-                if (packetLength == 0) {
-                    continue;
-                }
+            Builder builder = new Builder()
+                    .setSession("Tor-phone")
+                    .setMtu(TUN_MTU)
+                    .addAddress("169.254.42.1", 16)
+                    .addAddress("fc00::", 7)
+                    .addRoute("0.0.0.0", 0)
+                    .addRoute("::", 0)
+                    .addDnsServer("169.254.42.53")
+                    .addDnsServer("fe80::53");
 
-                // The router must consume the packet synchronously or copy it.
-                packetRouter.route(packetBuffer, packetLength, tunOutput);
+            tunInterface = builder.establish();
+            if (tunInterface == null) {
+                throw new IOException("Android did not establish the VPN interface");
             }
-        } catch (IOException | RuntimeException failure) {
-            if (packetLoopRunning.get()) {
-                stopTunnel();
-                stopSelf();
+
+            packetRouter.start(tunInterface);
+            tunInterface.close();
+            tunInterface = null;
+
+            if (!packetRouter.isRunning()) {
+                throw new IOException("Onionmasq stopped after startup");
             }
+            publishStatus("محرك Tor يعمل؛ لم يتم تأكيد اكتمال الاتصال بالشبكة بعد");
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            if (manager != null) {
+                manager.notify(NOTIFICATION_ID,
+                        buildNotification("محرك Tor يعمل؛ انتظار تأكيد جاهزية الشبكة"));
+            }
+        } catch (Throwable error) {
+            publishStatus("فشل المحرك: تعذر تشغيل Onionmasq أو تمرير الحزم");
+            stopTunnel();
+            stopSelf(startId);
+        } finally {
+            startupInProgress.set(false);
         }
     }
 
-    private Notification buildNotification() {
+    private Notification buildNotification(String status) {
         return new Notification.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.stat_sys_warning)
                 .setContentTitle("Tor-phone")
-                .setContentText("واجهة الشبكة تعمل؛ موجه الحزم غير متاح، والحماية غير نشطة")
+                .setContentText(status)
                 .setOngoing(true)
                 .setCategory(Notification.CATEGORY_SERVICE)
                 .build();
@@ -153,7 +164,7 @@ public final class TorPhoneVpnService extends VpnService {
                     "اتصال Tor-phone",
                     NotificationManager.IMPORTANCE_LOW
             );
-            channel.setDescription("حالة واجهة الشبكة الافتراضية");
+            channel.setDescription("حالة محرك Tor وواجهة الشبكة");
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) {
                 manager.createNotificationChannel(channel);
@@ -161,31 +172,38 @@ public final class TorPhoneVpnService extends VpnService {
         }
     }
 
+    private void publishStatus(String status) {
+        Intent update = new Intent(ACTION_STATUS);
+        update.setPackage(getPackageName());
+        update.putExtra(EXTRA_STATUS, status);
+        sendBroadcast(update);
+    }
+
     private void stopTunnel() {
-        packetLoopRunning.set(false);
-
-        Thread currentPacketThread = packetThread;
-        packetThread = null;
-        if (currentPacketThread != null
-                && currentPacketThread != Thread.currentThread()) {
-            currentPacketThread.interrupt();
-        }
-
+        packetRouter.stop();
         if (tunInterface != null) {
             try {
                 tunInterface.close();
             } catch (IOException ignored) {
-                // Closing the descriptor is best-effort during shutdown.
+                // Descriptor cleanup is best-effort during shutdown.
             }
             tunInterface = null;
         }
-
+        if (onionmasqBound) {
+            try {
+                OnionMasq.unbindVPNService();
+            } catch (Throwable ignored) {
+                // The library may already have been shut down.
+            }
+            onionmasqBound = false;
+        }
         stopForeground(STOP_FOREGROUND_REMOVE);
     }
 
     @Override
     public void onRevoke() {
         stopTunnel();
+        publishStatus("تم إيقاف اتصال VPN بعد سحب الإذن");
         stopSelf();
         super.onRevoke();
     }
@@ -194,27 +212,5 @@ public final class TorPhoneVpnService extends VpnService {
     public void onDestroy() {
         stopTunnel();
         super.onDestroy();
-    }
-
-    private interface PacketRouter {
-        void route(byte[] packet, int length, FileOutputStream tunOutput)
-                throws IOException;
-    }
-
-    /**
-     * No traffic is forwarded until a reviewed packet-to-stream bridge exists.
-     * Throwing here closes the VPN instead of allowing a direct-network fallback.
-     */
-    private static final class UnconfiguredPacketRouter implements PacketRouter {
-        @Override
-        public void route(
-                byte[] packet,
-                int length,
-                FileOutputStream tunOutput
-        ) throws IOException {
-            throw new IOException(
-                    "No packet router is configured; refusing to forward traffic"
-            );
-        }
     }
 }
