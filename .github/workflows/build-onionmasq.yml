@@ -3,10 +3,14 @@ name: Build Onionmasq native libraries
 on:
   push:
     branches: [ main ]
+    paths:
+      - '.github/workflows/build-onionmasq.yml'
+      - '.gitmodules'
+      - 'third_party/onionmasq/**'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: onionmasq-native-${{ github.ref }}
@@ -65,7 +69,9 @@ jobs:
           mkdir -p app/src/main/jniLibs/arm64-v8a app/src/main/jniLibs/armeabi-v7a
           install -m 0644 third_party/onionmasq/vendor/build/arm64-v8a/libonionmasq_mobile.so app/src/main/jniLibs/arm64-v8a/
           install -m 0644 third_party/onionmasq/vendor/build/armeabi-v7a/libonionmasq_mobile.so app/src/main/jniLibs/armeabi-v7a/
-          file app/src/main/jniLibs/*/libonionmasq_mobile.so
+          cp app/src/main/jniLibs/arm64-v8a/libonionmasq_mobile.so app/src/main/jniLibs/arm64-v8a/libonionmasq.so
+          cp app/src/main/jniLibs/armeabi-v7a/libonionmasq_mobile.so app/src/main/jniLibs/armeabi-v7a/libonionmasq.so
+          file app/src/main/jniLibs/*/*.so
 
       - name: Upload JNI libraries
         uses: actions/upload-artifact@v4
@@ -74,3 +80,18 @@ jobs:
           path: app/src/main/jniLibs/
           if-no-files-found: error
           retention-days: 14
+
+      - name: Commit compiled native libraries to main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/src/main/jniLibs/arm64-v8a/*.so app/src/main/jniLibs/armeabi-v7a/*.so
+          if git diff --cached --quiet; then
+            echo "Native libraries are already up to date."
+            exit 0
+          fi
+          git commit -m "Add compiled Onionmasq Android native libraries [skip ci]"
+          git push origin HEAD:main
