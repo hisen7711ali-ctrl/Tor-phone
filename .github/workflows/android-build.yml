@@ -1,27 +1,38 @@
-name: Android debug APK
+name: Android release and debug builds
 
 on:
   workflow_run:
     workflows: ["Build Onionmasq native libraries"]
     types: [completed]
     branches: [ main ]
+  push:
+    branches: [ main ]
+    paths:
+      - 'app/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradle.properties'
+      - '.github/workflows/android-build.yml'
+      - 'README.md'
+  workflow_dispatch:
 
 permissions:
   actions: read
   contents: read
 
 jobs:
-  debug-build:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+  android-build:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout the exact source revision
+      - name: Checkout source revision
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
           submodules: recursive
 
       - name: Download Onionmasq JNI libraries
+        if: ${{ github.event_name == 'workflow_run' }}
         uses: actions/download-artifact@v4
         with:
           name: onionmasq-jni-libs
@@ -54,13 +65,31 @@ jobs:
       - name: Install Android SDK 35
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Assemble debug APK with Onionmasq
+      - name: Assemble debug APK
         run: gradle --no-daemon assembleDebug
+
+      - name: Assemble ABI-split release APKs and AAB
+        run: gradle --no-daemon assembleRelease bundleRelease
+
+      - name: List release outputs and sizes
+        run: |
+          find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -printf '%f %s bytes\n'
+          find app/build/outputs/bundle/release -maxdepth 1 -type f -name '*.aab' -printf '%f %s bytes\n'
+
+      - name: Upload APK and AAB artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tor-phone-release-apks-and-aab
+          path: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: tor-phone-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14
