@@ -69,6 +69,7 @@ jobs:
         run: gradle --no-daemon assembleDebug
 
       - name: Assemble ABI-split release APKs and AAB
+        if: ${{ !contains(github.event.head_commit.message, '[debug-only]') }}
         continue-on-error: true
         run: gradle --no-daemon assembleRelease bundleRelease
 
