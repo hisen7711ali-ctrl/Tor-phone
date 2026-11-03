@@ -74,8 +74,8 @@ jobs:
 
       - name: List release outputs and sizes
         run: |
-          find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -printf '%f %s bytes\n'
-          find app/build/outputs/bundle/release -maxdepth 1 -type f -name '*.aab' -printf '%f %s bytes\n'
+          find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -printf '%f %s bytes\n' || true
+          find app/build/outputs/bundle/release -maxdepth 1 -type f -name '*.aab' -printf '%f %s bytes\n' || true
 
       - name: Upload APK and AAB artifacts
         if: ${{ hashFiles('app/build/outputs/apk/release/*.apk', 'app/build/outputs/bundle/release/*.aab') != '' }}
