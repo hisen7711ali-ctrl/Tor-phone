@@ -64,3 +64,14 @@
 
 - [بناء مكتبات Onionmasq](https://github.com/hisen7711ali-ctrl/Tor-phone/actions/workflows/build-onionmasq.yml)
 - [بناء Android](https://github.com/hisen7711ali-ctrl/Tor-phone/actions/workflows/android-build.yml)
+
+
+## دليل الاختبار وموارد الواجهة
+
+- [دليل اختبار الهاتف الحقيقي](TEST.md): تثبيت نسخة الاختبار، موافقة VPN، فحص Tor وعنوان IP، واختبارات DNS وIPv6 وتوقف الخدمة وتبديل الشبكة وإعادة التشغيل.
+- [رسم الأيقونة المتجهي](app/src/main/res/drawable/ic_launcher_foreground.xml) و[مصدر الرسم](tools/icon/ic_launcher.svg).
+- [موارد النصوص الإنجليزية](app/src/main/res/values/strings.xml) و[موارد النصوص العربية](app/src/main/res/values-ar/strings.xml).
+- [إعداد اللغات المدعومة](app/src/main/res/xml/locales_config.xml).
+- [مقاييس المسافات والأحجام](app/src/main/res/values/dimens.xml) و[أنماط الخطوط](app/src/main/res/values/typography.xml).
+
+اختيار اللغة محفوظ محليًا، ويستخدم إعداد لغات التطبيق في Android 13 وما بعده، وتطبيق إعدادات اللغة المحفوظة في الإصدارات الأقدم. حالة الاتصال المعروضة تأتي من رسائل خدمة VPN؛ وعند غياب حالة موثوقة تظهر حالة غير معروفة. لا تعني حالة تشغيل المحرك أن مرور البيانات عبر Tor قد ثبت.
