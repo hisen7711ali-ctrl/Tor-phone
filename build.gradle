@@ -12,11 +12,3 @@ ext {
     LIBRARY_URL = "https://gitlab.torproject.org/tpo/core/onionmasq"
     LIBRARY_GIT_URL = "https://gitlab.torproject.org/tpo/core/onionmasq"
 }
-
-subprojects {
-    afterEvaluate {
-        if (project.name == "onionmasq") {
-            dependencies.add("implementation", "androidx.lifecycle:lifecycle-livedata:2.9.1")
-        }
-    }
-}

@@ -5,6 +5,13 @@ dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories { google(); mavenCentral() }
 }
+gradle.beforeProject { targetProject ->
+    if (targetProject.name == "onionmasq") {
+        targetProject.plugins.withId("com.android.library") {
+            targetProject.dependencies.add("implementation", "androidx.lifecycle:lifecycle-livedata:2.9.1")
+        }
+    }
+}
 rootProject.name = "Tor-phone"
 include(":app")
 include(":onionmasq")
