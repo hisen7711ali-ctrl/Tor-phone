@@ -9,6 +9,7 @@ import android.os.Binder;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.ParcelFileDescriptor;
+import org.torphone.app.R;
 
 import org.torproject.onionmasq.ISocketProtect;
 import org.torproject.onionmasq.OnionMasq;
@@ -53,7 +54,7 @@ public final class TorPhoneVpnService extends VpnService {
         super.onCreate();
         createNotificationChannel();
         packetRouter.setFailureListener(error -> {
-            publishStatus("فشل المحرك: توقف Onionmasq");
+            publishStatus(getString(R.string.status_engine_failed));
             stopSelf();
         });
     }
@@ -85,7 +86,7 @@ public final class TorPhoneVpnService extends VpnService {
 
         // Native loading and Arti initialization must succeed before TUN exists.
         if (packetRouter.init(getApplicationContext()) != OnionmasqRouter.INIT_OK) {
-            publishStatus("فشل المحرك: " + OnionmasqRouter.loadFailureMessage());
+            publishStatus(getString(R.string.status_engine_init_failed));
             stopSelf(startId);
             return START_NOT_STICKY;
         }
@@ -95,13 +96,13 @@ public final class TorPhoneVpnService extends VpnService {
                 OnionMasq.bindVPNService(TorPhoneVpnService.class);
                 onionmasqBound = true;
             } catch (Throwable error) {
-                publishStatus("فشل المحرك: تعذر ربط خدمة حماية المقابس");
+                publishStatus(getString(R.string.status_socket_protection_failed));
                 stopSelf(startId);
                 return START_NOT_STICKY;
             }
         }
 
-        startForeground(NOTIFICATION_ID, buildNotification("محرك Tor قيد التهيئة"));
+        startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.notification_engine_starting)));
         if (startupInProgress.compareAndSet(false, true)) {
             new Thread(() -> startTunnel(startId), "TorPhone-VPN-Startup").start();
         }
@@ -111,7 +112,7 @@ public final class TorPhoneVpnService extends VpnService {
     private void startTunnel(int startId) {
         try {
             Builder builder = new Builder()
-                    .setSession("Tor-phone")
+                    .setSession(getString(R.string.app_name))
                     .setMtu(TUN_MTU)
                     .addAddress("169.254.42.1", 16)
                     .addAddress("fc00::", 7)
@@ -122,7 +123,7 @@ public final class TorPhoneVpnService extends VpnService {
 
             tunInterface = builder.establish();
             if (tunInterface == null) {
-                throw new IOException("Android did not establish the VPN interface");
+                throw new IOException(getString(R.string.status_engine_failed));
             }
 
             packetRouter.start(tunInterface);
@@ -130,16 +131,16 @@ public final class TorPhoneVpnService extends VpnService {
             tunInterface = null;
 
             if (!packetRouter.isRunning()) {
-                throw new IOException("Onionmasq stopped after startup");
+                throw new IOException(getString(R.string.status_engine_failed));
             }
-            publishStatus("محرك Tor يعمل؛ لم يتم تأكيد اكتمال الاتصال بالشبكة بعد");
+            publishStatus(getString(R.string.status_engine_running_unverified));
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) {
                 manager.notify(NOTIFICATION_ID,
-                        buildNotification("محرك Tor يعمل؛ انتظار تأكيد جاهزية الشبكة"));
+                        buildNotification(getString(R.string.notification_engine_running)));
             }
         } catch (Throwable error) {
-            publishStatus("فشل المحرك: تعذر تشغيل Onionmasq أو تمرير الحزم");
+            publishStatus(getString(R.string.status_engine_failed));
             stopTunnel();
             stopSelf(startId);
         } finally {
@@ -150,7 +151,7 @@ public final class TorPhoneVpnService extends VpnService {
     private Notification buildNotification(String status) {
         return new Notification.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.stat_sys_warning)
-                .setContentTitle("Tor-phone")
+                .setContentTitle(getString(R.string.app_name))
                 .setContentText(status)
                 .setOngoing(true)
                 .setCategory(Notification.CATEGORY_SERVICE)
@@ -161,10 +162,10 @@ public final class TorPhoneVpnService extends VpnService {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
-                    "اتصال Tor-phone",
+                    getString(R.string.notification_channel_name),
                     NotificationManager.IMPORTANCE_LOW
             );
-            channel.setDescription("حالة محرك Tor وواجهة الشبكة");
+            channel.setDescription(getString(R.string.notification_channel_description));
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) {
                 manager.createNotificationChannel(channel);
@@ -203,7 +204,7 @@ public final class TorPhoneVpnService extends VpnService {
     @Override
     public void onRevoke() {
         stopTunnel();
-        publishStatus("تم إيقاف اتصال VPN بعد سحب الإذن");
+        publishStatus(getString(R.string.status_vpn_permission_revoked));
         stopSelf();
         super.onRevoke();
     }

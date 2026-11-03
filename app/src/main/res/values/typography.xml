@@ -1,0 +1,11 @@
+<resources>
+<style name="TorPhone_Brand"><item name="android:textSize">12sp</item><item name="android:textColor">@color/teal</item><item name="android:fontFamily">sans</item><item name="android:textStyle">bold</item><item name="android:letterSpacing">0.18</item></style>
+<style name="TorPhone_Headline"><item name="android:textSize">30sp</item><item name="android:textColor">@color/white</item><item name="android:fontFamily">sans</item><item name="android:textStyle">bold</item></style>
+<style name="TorPhone_HeadlineSmall"><item name="android:textSize">21sp</item><item name="android:textColor">@color/white</item><item name="android:fontFamily">sans</item><item name="android:textStyle">bold</item></style>
+<style name="TorPhone_Section"><item name="android:textSize">11sp</item><item name="android:textColor">@color/muted</item><item name="android:fontFamily">sans</item><item name="android:textStyle">bold</item></style>
+<style name="TorPhone_Body"><item name="android:textSize">13sp</item><item name="android:textColor">@color/muted</item><item name="android:fontFamily">sans</item></style>
+<style name="TorPhone_BodyStrong"><item name="android:textSize">16sp</item><item name="android:textColor">@color/white</item><item name="android:fontFamily">sans</item><item name="android:textStyle">bold</item></style>
+<style name="TorPhone_Button"><item name="android:textSize">15sp</item><item name="android:textColor">@color/navy</item><item name="android:fontFamily">sans</item><item name="android:textStyle">bold</item></style>
+<style name="TorPhone_ButtonSmall"><item name="android:textSize">13sp</item><item name="android:textColor">@color/white</item><item name="android:fontFamily">sans</item><item name="android:textStyle">bold</item></style>
+<style name="TorPhone_Caption"><item name="android:textSize">10sp</item><item name="android:textColor">@color/muted</item><item name="android:fontFamily">sans</item><item name="android:textStyle">bold</item></style>
+</resources>
