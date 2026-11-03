@@ -1,11 +1,9 @@
 package org.torphone.app;
 
 import android.app.Activity;
-import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
-import android.net.Uri;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
@@ -13,11 +11,10 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 /**
- * Tor-phone dashboard and Orbot companion launcher.
- * Tor traffic is NOT routed by this app yet: Orbot owns Android's VPN slot.
+ * Tor-phone dashboard.
+ * This activity no longer depends on or launches an external Tor application.
  */
 public final class MainActivity extends Activity {
     private final int bg = Color.rgb(8, 19, 33);
@@ -53,10 +50,10 @@ public final class MainActivity extends Activity {
         LinearLayout state = panel();
         state.setPadding(dp(18), dp(18), dp(18), dp(18));
         state.addView(label("PROTECTION STATUS", 11, muted, true));
-        TextView disconnected = label("Check connection in Orbot", 21, Color.WHITE, true);
+        TextView disconnected = label("Protection is not active", 21, Color.WHITE, true);
         disconnected.setPadding(0, dp(9), 0, dp(5));
         state.addView(disconnected);
-        state.addView(label("Tor-phone does not yet own or verify the active VPN tunnel.", 13, muted, false));
+        state.addView(label("No external Tor application is required. Protection will be reported only when this app owns an active tunnel.", 13, muted, false));
         page.addView(state, margin(-1, -2, 0, 25, 0, 22));
 
         page.addView(label("CONNECTION MODES", 11, muted, true));
@@ -69,53 +66,24 @@ public final class MainActivity extends Activity {
         choices.addView(gap, new LinearLayout.LayoutParams(dp(10), 1));
         choices.addView(tor, new LinearLayout.LayoutParams(0, dp(52), 1));
         page.addView(choices, margin(-1, -2, 0, 11, 0, 0));
-        modeInfo = label("Tor selected · use Orbot companion for device-wide Tor", 13, muted, false);
+        modeInfo = label("Select a connection mode", 13, muted, false);
         modeInfo.setPadding(dp(2), dp(5), 0, dp(18));
         page.addView(modeInfo);
-        vpn.setOnClickListener(v -> modeInfo.setText("VPN selected · configure a provider or import a profile when VPN engine is added"));
-        tor.setOnClickListener(v -> modeInfo.setText("Tor selected · Orbot will provide the Android VPN tunnel in this phase"));
-
-        Button torLaunch = new Button(this);
-        torLaunch.setText("OPEN ORBOT · ENABLE TOR");
-        torLaunch.setTextColor(bg);
-        torLaunch.setTextSize(14);
-        torLaunch.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        torLaunch.setAllCaps(false);
-        torLaunch.setBackground(shape(teal, 16));
-        page.addView(torLaunch, margin(-1, 56, 0, 0, 0, 12));
-        torLaunch.setOnClickListener(v -> openOrbot());
-
-        TextView hint = label("In Orbot, approve Android's VPN prompt, start Tor, then enable VPN mode and Protect all apps. Return here only after Orbot reports connected.", 13, muted, false);
-        hint.setPadding(dp(3), dp(3), dp(3), dp(22));
-        page.addView(hint);
+        vpn.setOnClickListener(v -> modeInfo.setText("VPN selected · no VPN tunnel is active"));
+        tor.setOnClickListener(v -> modeInfo.setText("Tor selected · no Tor tunnel is active"));
 
         page.addView(label("PRIVACY CENTER", 11, muted, true));
-        addInfo(page, "Tor for all apps", "Orbot can route supported phone apps through Tor using Android VpnService. Some apps may not work correctly through Tor.");
-        addInfo(page, "VPN providers", "Proton VPN Free is a separate provider app. Tor-phone cannot use its private servers without an authorized integration or profile.");
-        addInfo(page, "Add your own server", "A future import screen will accept provider-issued WireGuard or OpenVPN profiles. Never paste passwords or private keys into public support chats.");
-        addInfo(page, "VPN Gate warning", "Volunteer relays are experimental and may log connection metadata. Do not use them for sensitive traffic.");
-        addInfo(page, "Location privacy", "VPN/Tor changes network routing, not GPS. Manage location permissions per app in Android Settings.");
-        addInfo(page, "Emergency protection", "Enable Android Always-on VPN and Block connections without VPN only after verifying the selected VPN app works reliably.");
+        addInfo(page, "Tor protection", "Tor protection is inactive until the internal Tor engine and Android VPN tunnel are active and verified.");
+        addInfo(page, "VPN providers", "VPN connections require a real provider integration or a user-imported configuration. No fabricated servers are used.");
+        addInfo(page, "Your own server", "Server configuration will be accepted only from a real provider or from a configuration supplied by the user.");
+        addInfo(page, "Network status", "The application must report the real tunnel state rather than treating a button press as proof of protection.");
+        addInfo(page, "Location privacy", "Network routing does not automatically change GPS or other device-location signals. Android permissions remain under user control.");
+        addInfo(page, "Emergency protection", "Traffic blocking will be enabled only when an actual VPN tunnel and fail-closed behavior are implemented and verified.");
         TextView footer = label("TRANSPARENT STATUS  •  USER-CONTROLLED PERMISSIONS", 10, muted, true);
         footer.setGravity(Gravity.CENTER);
         footer.setPadding(0, dp(24), 0, 0);
         page.addView(footer);
         setContentView(scroll);
-    }
-
-    private void openOrbot() {
-        Intent launch = getPackageManager().getLaunchIntentForPackage("org.torproject.android");
-        if (launch != null) {
-            launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(launch);
-            return;
-        }
-        try {
-            startActivity(new Intent(Intent.ACTION_VIEW,
-                    Uri.parse("https://play.google.com/store/apps/details?id=org.torproject.android")));
-        } catch (Exception e) {
-            Toast.makeText(this, "Install Orbot from the official Tor/Guardian Project download page.", Toast.LENGTH_LONG).show();
-        }
     }
 
     private void addInfo(LinearLayout parent, String title, String detail) {
