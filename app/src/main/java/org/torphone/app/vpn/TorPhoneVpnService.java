@@ -8,13 +8,18 @@ import android.net.VpnService;
 import android.os.Build;
 import android.os.ParcelFileDescriptor;
 
+import java.io.EOFException;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Owns Tor-phone's Android VPN interface.
  *
- * The TUN interface is deliberately not advertised as protected: packet
- * forwarding is not connected yet. The service notification says so plainly.
+ * The TUN reader is real, but no packet router is installed until a Tor
+ * transport and a compatible packet bridge are selected and integrated.
+ * The default router therefore fails closed instead of leaking traffic.
  */
 public final class TorPhoneVpnService extends VpnService {
     public static final String ACTION_START = "org.torphone.app.vpn.START";
@@ -23,8 +28,13 @@ public final class TorPhoneVpnService extends VpnService {
     private static final String CHANNEL_ID = "tor_phone_vpn";
     private static final int NOTIFICATION_ID = 7001;
     private static final int TUN_MTU = 1500;
+    private static final int MAX_PACKET_SIZE = 32767;
+
+    private final AtomicBoolean packetLoopRunning = new AtomicBoolean(false);
+    private final PacketRouter packetRouter = new UnconfiguredPacketRouter();
 
     private ParcelFileDescriptor tunInterface;
+    private Thread packetThread;
 
     @Override
     public void onCreate() {
@@ -49,6 +59,7 @@ public final class TorPhoneVpnService extends VpnService {
 
         try {
             establishTunInterface();
+            startPacketLoop();
         } catch (Exception error) {
             stopTunnel();
             stopSelf(startId);
@@ -78,11 +89,58 @@ public final class TorPhoneVpnService extends VpnService {
         }
     }
 
+    private void startPacketLoop() throws IOException {
+        if (tunInterface == null) {
+            throw new IOException("TUN interface is not established");
+        }
+        if (!packetLoopRunning.compareAndSet(false, true)) {
+            return;
+        }
+
+        FileInputStream tunInput =
+                new FileInputStream(tunInterface.getFileDescriptor());
+        FileOutputStream tunOutput =
+                new FileOutputStream(tunInterface.getFileDescriptor());
+
+        packetThread = new Thread(
+                () -> readAndRoutePackets(tunInput, tunOutput),
+                "TorPhone-TUN-Reader"
+        );
+        packetThread.start();
+    }
+
+    private void readAndRoutePackets(
+            FileInputStream tunInput,
+            FileOutputStream tunOutput
+    ) {
+        byte[] packetBuffer = new byte[MAX_PACKET_SIZE];
+
+        try {
+            while (packetLoopRunning.get()) {
+                int packetLength = tunInput.read(packetBuffer);
+                if (packetLength < 0) {
+                    throw new EOFException("TUN interface reached end of stream");
+                }
+                if (packetLength == 0) {
+                    continue;
+                }
+
+                // The router must consume the packet synchronously or copy it.
+                packetRouter.route(packetBuffer, packetLength, tunOutput);
+            }
+        } catch (IOException | RuntimeException failure) {
+            if (packetLoopRunning.get()) {
+                stopTunnel();
+                stopSelf();
+            }
+        }
+    }
+
     private Notification buildNotification() {
         return new Notification.Builder(this, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.stat_sys_warning)
                 .setContentTitle("Tor-phone")
-                .setContentText("واجهة الشبكة مهيأة، لكن تمرير البيانات غير جاهز")
+                .setContentText("واجهة الشبكة تعمل؛ موجه الحزم غير متاح، والحماية غير نشطة")
                 .setOngoing(true)
                 .setCategory(Notification.CATEGORY_SERVICE)
                 .build();
@@ -104,14 +162,24 @@ public final class TorPhoneVpnService extends VpnService {
     }
 
     private void stopTunnel() {
+        packetLoopRunning.set(false);
+
+        Thread currentPacketThread = packetThread;
+        packetThread = null;
+        if (currentPacketThread != null
+                && currentPacketThread != Thread.currentThread()) {
+            currentPacketThread.interrupt();
+        }
+
         if (tunInterface != null) {
             try {
                 tunInterface.close();
             } catch (IOException ignored) {
-                // The descriptor is closed best-effort during shutdown.
+                // Closing the descriptor is best-effort during shutdown.
             }
             tunInterface = null;
         }
+
         stopForeground(STOP_FOREGROUND_REMOVE);
     }
 
@@ -126,5 +194,27 @@ public final class TorPhoneVpnService extends VpnService {
     public void onDestroy() {
         stopTunnel();
         super.onDestroy();
+    }
+
+    private interface PacketRouter {
+        void route(byte[] packet, int length, FileOutputStream tunOutput)
+                throws IOException;
+    }
+
+    /**
+     * No traffic is forwarded until a reviewed packet-to-stream bridge exists.
+     * Throwing here closes the VPN instead of allowing a direct-network fallback.
+     */
+    private static final class UnconfiguredPacketRouter implements PacketRouter {
+        @Override
+        public void route(
+                byte[] packet,
+                int length,
+                FileOutputStream tunOutput
+        ) throws IOException {
+            throw new IOException(
+                    "No packet router is configured; refusing to forward traffic"
+            );
+        }
     }
 }
