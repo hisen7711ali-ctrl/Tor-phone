@@ -15,7 +15,6 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import org.torphone.app.vpn.TorPhoneVpnService;
 
 /**
  * Tor-phone dashboard.
@@ -79,7 +78,7 @@ public final class MainActivity extends Activity {
         vpn.setOnClickListener(v -> modeInfo.setText("VPN selected · no traffic router is active"));
         tor.setOnClickListener(v -> modeInfo.setText("Tor selected · the internal Tor engine is not installed"));
 
-        Button startVpn = modeButton("تهيئة واجهة الشبكة");
+        Button startVpn = modeButton("طلب إذن اتصال الشبكة");
         startVpn.setTextColor(bg);
         startVpn.setBackground(shape(teal, 16));
         page.addView(startVpn, margin(-1, 56, 0, 0, 0, 22));
@@ -102,7 +101,7 @@ public final class MainActivity extends Activity {
     private void requestVpnPermission() {
         Intent permissionIntent = VpnService.prepare(this);
         if (permissionIntent == null) {
-            startVpnService();
+            showTunnelNotReady();
         } else {
             startActivityForResult(permissionIntent, VPN_PERMISSION_REQUEST);
         }
@@ -115,7 +114,7 @@ public final class MainActivity extends Activity {
             return;
         }
         if (resultCode == RESULT_OK) {
-            startVpnService();
+            showTunnelNotReady();
         } else {
             Toast.makeText(
                     this,
@@ -125,15 +124,15 @@ public final class MainActivity extends Activity {
         }
     }
 
-    private void startVpnService() {
-        Intent serviceIntent = new Intent(this, TorPhoneVpnService.class);
-        serviceIntent.setAction(TorPhoneVpnService.ACTION_START);
-        startForegroundService(serviceIntent);
+    private void showTunnelNotReady() {
         Toast.makeText(
                 this,
-                "تم منح الإذن. واجهة الشبكة قيد التهيئة، لكن تمرير البيانات والحماية غير متاحين بعد.",
+                "تم منح إذن الشبكة، لكن لم يبدأ النفق لأن تمرير الحزم غير جاهز. اتصالك الحالي لم يتغير.",
                 Toast.LENGTH_LONG
         ).show();
+        if (modeInfo != null) {
+            modeInfo.setText("تم منح الإذن · النفق متوقف بأمان حتى يصبح تمرير الحزم جاهزًا");
+        }
     }
 
     private void addInfo(LinearLayout parent, String title, String detail) {
