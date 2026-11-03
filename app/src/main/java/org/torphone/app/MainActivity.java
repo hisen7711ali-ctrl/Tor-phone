@@ -1,9 +1,11 @@
 package org.torphone.app;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.net.VpnService;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
@@ -11,12 +13,17 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import org.torphone.app.vpn.TorPhoneVpnService;
 
 /**
  * Tor-phone dashboard.
- * This activity no longer depends on or launches an external Tor application.
+ * The screen never labels the connection as protected without a verified router.
  */
 public final class MainActivity extends Activity {
+    private static final int VPN_PERMISSION_REQUEST = 7101;
+
     private final int bg = Color.rgb(8, 19, 33);
     private final int surface = Color.rgb(17, 31, 48);
     private final int teal = Color.rgb(50, 214, 194);
@@ -53,7 +60,7 @@ public final class MainActivity extends Activity {
         TextView disconnected = label("Protection is not active", 21, Color.WHITE, true);
         disconnected.setPadding(0, dp(9), 0, dp(5));
         state.addView(disconnected);
-        state.addView(label("No external Tor application is required. Protection will be reported only when this app owns an active tunnel.", 13, muted, false));
+        state.addView(label("The VPN permission alone does not mean traffic is protected. Packet routing is not connected yet.", 13, muted, false));
         page.addView(state, margin(-1, -2, 0, 25, 0, 22));
 
         page.addView(label("CONNECTION MODES", 11, muted, true));
@@ -69,8 +76,14 @@ public final class MainActivity extends Activity {
         modeInfo = label("Select a connection mode", 13, muted, false);
         modeInfo.setPadding(dp(2), dp(5), 0, dp(18));
         page.addView(modeInfo);
-        vpn.setOnClickListener(v -> modeInfo.setText("VPN selected · no VPN tunnel is active"));
-        tor.setOnClickListener(v -> modeInfo.setText("Tor selected · no Tor tunnel is active"));
+        vpn.setOnClickListener(v -> modeInfo.setText("VPN selected · no traffic router is active"));
+        tor.setOnClickListener(v -> modeInfo.setText("Tor selected · the internal Tor engine is not installed"));
+
+        Button startVpn = modeButton("تهيئة واجهة الشبكة");
+        startVpn.setTextColor(bg);
+        startVpn.setBackground(shape(teal, 16));
+        page.addView(startVpn, margin(-1, 56, 0, 0, 0, 22));
+        startVpn.setOnClickListener(v -> requestVpnPermission());
 
         page.addView(label("PRIVACY CENTER", 11, muted, true));
         addInfo(page, "Tor protection", "Tor protection is inactive until the internal Tor engine and Android VPN tunnel are active and verified.");
@@ -84,6 +97,43 @@ public final class MainActivity extends Activity {
         footer.setPadding(0, dp(24), 0, 0);
         page.addView(footer);
         setContentView(scroll);
+    }
+
+    private void requestVpnPermission() {
+        Intent permissionIntent = VpnService.prepare(this);
+        if (permissionIntent == null) {
+            startVpnService();
+        } else {
+            startActivityForResult(permissionIntent, VPN_PERMISSION_REQUEST);
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != VPN_PERMISSION_REQUEST) {
+            return;
+        }
+        if (resultCode == RESULT_OK) {
+            startVpnService();
+        } else {
+            Toast.makeText(
+                    this,
+                    "لم توافق على إذن اتصال الشبكة. لم يتم تشغيل واجهة الشبكة.",
+                    Toast.LENGTH_LONG
+            ).show();
+        }
+    }
+
+    private void startVpnService() {
+        Intent serviceIntent = new Intent(this, TorPhoneVpnService.class);
+        serviceIntent.setAction(TorPhoneVpnService.ACTION_START);
+        startForegroundService(serviceIntent);
+        Toast.makeText(
+                this,
+                "تم منح الإذن. واجهة الشبكة قيد التهيئة، لكن تمرير البيانات والحماية غير متاحين بعد.",
+                Toast.LENGTH_LONG
+        ).show();
     }
 
     private void addInfo(LinearLayout parent, String title, String detail) {
