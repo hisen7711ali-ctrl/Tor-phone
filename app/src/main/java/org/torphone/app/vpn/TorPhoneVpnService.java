@@ -27,6 +27,11 @@ public final class TorPhoneVpnService extends VpnService {
     private static final String CHANNEL_ID = "tor_phone_vpn";
     private static final int NOTIFICATION_ID = 7001;
     private static final int TUN_MTU = 1500;
+    private static volatile String lastStatus;
+
+    public static String getLastStatus() {
+        return lastStatus;
+    }
 
     private final OnionmasqRouter packetRouter = new OnionmasqRouter();
     private final AtomicBoolean startupInProgress = new AtomicBoolean(false);
@@ -53,6 +58,7 @@ public final class TorPhoneVpnService extends VpnService {
     public void onCreate() {
         super.onCreate();
         createNotificationChannel();
+        publishStatus(getString(R.string.state_disconnected));
         packetRouter.setFailureListener(error -> {
             publishStatus(getString(R.string.status_engine_failed));
             stopSelf();
@@ -76,6 +82,7 @@ public final class TorPhoneVpnService extends VpnService {
         String action = intent == null ? null : intent.getAction();
         if (ACTION_STOP.equals(action)) {
             stopTunnel();
+            publishStatus(getString(R.string.state_disconnected));
             stopSelf(startId);
             return START_NOT_STICKY;
         }
@@ -102,6 +109,7 @@ public final class TorPhoneVpnService extends VpnService {
             }
         }
 
+        publishStatus(getString(R.string.status_engine_starting));
         startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.notification_engine_starting)));
         if (startupInProgress.compareAndSet(false, true)) {
             new Thread(() -> startTunnel(startId), "TorPhone-VPN-Startup").start();
@@ -174,6 +182,7 @@ public final class TorPhoneVpnService extends VpnService {
     }
 
     private void publishStatus(String status) {
+        lastStatus = status;
         Intent update = new Intent(ACTION_STATUS);
         update.setPackage(getPackageName());
         update.putExtra(EXTRA_STATUS, status);
@@ -212,6 +221,10 @@ public final class TorPhoneVpnService extends VpnService {
     @Override
     public void onDestroy() {
         stopTunnel();
+        if (lastStatus != null && (lastStatus.equals(getString(R.string.status_engine_starting))
+                || lastStatus.equals(getString(R.string.status_engine_running_unverified)))) {
+            publishStatus(getString(R.string.state_disconnected));
+        }
         super.onDestroy();
     }
 }
