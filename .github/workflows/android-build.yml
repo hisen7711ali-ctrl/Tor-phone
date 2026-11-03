@@ -78,7 +78,7 @@ jobs:
           find app/build/outputs/bundle/release -maxdepth 1 -type f -name '*.aab' -printf '%f %s bytes\n'
 
       - name: Upload APK and AAB artifacts
-        if: \${{ hashFiles('app/build/outputs/apk/release/*.apk', 'app/build/outputs/bundle/release/*.aab') != '' }}
+        if: ${{ hashFiles('app/build/outputs/apk/release/*.apk', 'app/build/outputs/bundle/release/*.aab') != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: tor-phone-release-apks-and-aab
