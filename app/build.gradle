@@ -38,6 +38,13 @@ android {
         }
     }
 
+    // AndroidX Lifecycle 2.9.1's NullSafeMutableLiveData lint detector crashes
+    // against the Kotlin/UAST toolchain used by this project. Keep all other lint
+    // checks enabled; this disables only the incompatible detector.
+    lint {
+        disable 'NullSafeMutableLiveData'
+    }
+
     buildFeatures {
         compose true
     }
