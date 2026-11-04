@@ -73,7 +73,7 @@ public final class SplitTunnelingActivity extends Activity {
         page.addView(description);
 
         TextView warning = new TextView(this);
-        warning.setText("تنبيه: التطبيقات المستثناة لن تحصل على حماية Tor. التغييرات تُطبّق عند فصل VPN وإعادة الاتصال.");
+        warning.setText("تنبيه: التطبيقات المستثناة لن تحصل على حماية Tor. التغييرات تُطبّق عند فصل VPN وإعادة الاتصال. إذا كان Android Lockdown مفعّلًا (Block connections without VPN)، فقد يمنع النظام اتصال التطبيقات المستثناة خارج النفق؛ اختبر هذا الإعداد على جهازك.");
         warning.setTextSize(13);
         warning.setTextColor(dark ? Color.rgb(255,195,105) : Color.rgb(153,91,0));
         warning.setPadding(dp(14), dp(12), dp(14), dp(12));
