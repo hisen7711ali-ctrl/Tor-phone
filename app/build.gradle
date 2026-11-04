@@ -43,9 +43,6 @@ android {
     // checks enabled; this disables only the incompatible detector.
     lint {
         disable 'NullSafeMutableLiveData'
-        // Release lintVital crashes on ComposeActivity.kt with the current Kotlin/UAST ABI.
-        // Keep normal lint checks available while preventing this broken release-only analyzer from blocking packaging.
-        checkReleaseBuilds false
     }
 
     buildFeatures {
