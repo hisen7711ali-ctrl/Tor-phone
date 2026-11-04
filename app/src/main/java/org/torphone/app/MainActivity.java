@@ -162,6 +162,12 @@ public final class MainActivity extends Activity {
         TextView settings = text(R.string.settings_title, 11, secondary, true);
         settings.setLetterSpacing(.12f);
         page.addView(settings, lp(-1, -2, 0, dp(22), 0, dp(10)));
+        Button splitTunneling = languageButton(R.string.split_tunneling_title, primary);
+        splitTunneling.setTextSize(14);
+        splitTunneling.setMinHeight(dp(52));
+        splitTunneling.setOnClickListener(v ->
+                startActivity(new Intent(this, SplitTunnelingActivity.class)));
+        page.addView(splitTunneling, lp(-1, dp(52), 0, 0, 0, dp(12)));
         LinearLayout language = panel();
         language.setGravity(Gravity.CENTER_VERTICAL);
         language.setPadding(dp(12), dp(6), dp(12), dp(6));
@@ -284,16 +290,20 @@ public final class MainActivity extends Activity {
                 || value.equals(getString(R.string.vpn_permission_denied))
                 || value.equals(getString(R.string.status_vpn_permission_revoked));
         boolean starting = value.equals(getString(R.string.status_engine_starting));
-        connected = value.equals(getString(R.string.status_engine_running_unverified));
+        boolean verified = value.equals(getString(R.string.status_verified_protected));
+        connected = verified || value.equals(getString(R.string.status_engine_running_unverified));
         if (statusTitle == null) return;
-        int color = failed ? 0xFFFF647C : starting || connected ? 0xFFF3B95F
+        int color = failed ? 0xFFFF647C : verified ? 0xFF32D6A0
+                : starting || connected ? 0xFFF3B95F
                 : dark ? 0xFFF4F7FF : 0xFF182030;
         statusTitle.setText(failed ? R.string.badge_failed
                 : starting ? R.string.badge_connecting
+                : verified ? R.string.badge_verified_protected
                 : connected ? R.string.badge_engine_running
                 : R.string.badge_disconnected);
         statusSubtitle.setText(failed ? R.string.badge_failed_subtitle
                 : starting ? R.string.badge_connecting_subtitle
+                : verified ? R.string.badge_verified_subtitle
                 : connected ? R.string.badge_engine_running_subtitle
                 : R.string.badge_disconnected_subtitle);
         statusTitle.setTextColor(color);
