@@ -29,33 +29,24 @@ public final class TorPhoneVpnService extends VpnService {
     private static final int TUN_MTU = 1500;
     private static volatile String lastStatus;
 
-    public static String getLastStatus() {
-        return lastStatus;
-    }
+    public static String getLastStatus() { return lastStatus; }
 
     private final OnionmasqRouter packetRouter = new OnionmasqRouter();
     private final AtomicBoolean startupInProgress = new AtomicBoolean(false);
     private final IBinder serviceBinder = new ServiceBinder(this);
-
     private ParcelFileDescriptor tunInterface;
     private volatile boolean onionmasqBound;
 
     private static final class ServiceBinder extends Binder implements ISocketProtect {
         private final WeakReference<TorPhoneVpnService> service;
-
-        ServiceBinder(TorPhoneVpnService owner) {
-            service = new WeakReference<>(owner);
-        }
-
-        @Override
-        public boolean protect(int socket) {
+        ServiceBinder(TorPhoneVpnService owner) { service = new WeakReference<>(owner); }
+        @Override public boolean protect(int socket) {
             TorPhoneVpnService owner = service.get();
             return owner != null && owner.protectSocket(socket);
         }
     }
 
-    @Override
-    public void onCreate() {
+    @Override public void onCreate() {
         super.onCreate();
         createNotificationChannel();
         publishStatus(getString(R.string.state_disconnected));
@@ -65,21 +56,20 @@ public final class TorPhoneVpnService extends VpnService {
         });
     }
 
-    @Override
-    public IBinder onBind(Intent intent) {
-        if (intent != null && "android.net.VpnService".equals(intent.getAction())) {
-            return super.onBind(intent);
-        }
+    @Override public IBinder onBind(Intent intent) {
+        if (intent != null && "android.net.VpnService".equals(intent.getAction())) return super.onBind(intent);
         return serviceBinder;
     }
 
-    private boolean protectSocket(int socket) {
-        return super.protect(socket);
-    }
+    private boolean protectSocket(int socket) { return super.protect(socket); }
 
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
+    @Override public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent == null ? null : intent.getAction();
+        // Android may restart an Always-on VPN service with a null Intent.
+        // Only auto-start in that case when the user enabled Always-on VPN.
+        if (action == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isAlwaysOn()) {
+            action = ACTION_START;
+        }
         if (ACTION_STOP.equals(action)) {
             stopTunnel();
             publishStatus(getString(R.string.state_disconnected));
@@ -91,7 +81,6 @@ public final class TorPhoneVpnService extends VpnService {
             return START_NOT_STICKY;
         }
 
-        // Native loading and Arti initialization must succeed before TUN exists.
         if (packetRouter.init(getApplicationContext()) != OnionmasqRouter.INIT_OK) {
             publishStatus(getString(R.string.status_engine_init_failed));
             stopSelf(startId);
@@ -130,23 +119,17 @@ public final class TorPhoneVpnService extends VpnService {
                     .addDnsServer("fe80::53");
 
             tunInterface = builder.establish();
-            if (tunInterface == null) {
-                throw new IOException(getString(R.string.status_engine_failed));
-            }
+            if (tunInterface == null) throw new IOException(getString(R.string.status_engine_failed));
 
             packetRouter.start(tunInterface);
             tunInterface.close();
             tunInterface = null;
 
-            if (!packetRouter.isRunning()) {
-                throw new IOException(getString(R.string.status_engine_failed));
-            }
+            if (!packetRouter.isRunning()) throw new IOException(getString(R.string.status_engine_failed));
             publishStatus(getString(R.string.status_engine_running_unverified));
             NotificationManager manager = getSystemService(NotificationManager.class);
-            if (manager != null) {
-                manager.notify(NOTIFICATION_ID,
-                        buildNotification(getString(R.string.notification_engine_running)));
-            }
+            if (manager != null) manager.notify(NOTIFICATION_ID,
+                    buildNotification(getString(R.string.notification_engine_running)));
         } catch (Throwable error) {
             publishStatus(getString(R.string.status_engine_failed));
             stopTunnel();
@@ -168,16 +151,11 @@ public final class TorPhoneVpnService extends VpnService {
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID,
-                    getString(R.string.notification_channel_name),
-                    NotificationManager.IMPORTANCE_LOW
-            );
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID,
+                    getString(R.string.notification_channel_name), NotificationManager.IMPORTANCE_LOW);
             channel.setDescription(getString(R.string.notification_channel_description));
             NotificationManager manager = getSystemService(NotificationManager.class);
-            if (manager != null) {
-                manager.createNotificationChannel(channel);
-            }
+            if (manager != null) manager.createNotificationChannel(channel);
         }
     }
 
@@ -192,34 +170,24 @@ public final class TorPhoneVpnService extends VpnService {
     private void stopTunnel() {
         packetRouter.stop();
         if (tunInterface != null) {
-            try {
-                tunInterface.close();
-            } catch (IOException ignored) {
-                // Descriptor cleanup is best-effort during shutdown.
-            }
+            try { tunInterface.close(); } catch (IOException ignored) { }
             tunInterface = null;
         }
         if (onionmasqBound) {
-            try {
-                OnionMasq.unbindVPNService();
-            } catch (Throwable ignored) {
-                // The library may already have been shut down.
-            }
+            try { OnionMasq.unbindVPNService(); } catch (Throwable ignored) { }
             onionmasqBound = false;
         }
         stopForeground(STOP_FOREGROUND_REMOVE);
     }
 
-    @Override
-    public void onRevoke() {
+    @Override public void onRevoke() {
         stopTunnel();
         publishStatus(getString(R.string.status_vpn_permission_revoked));
         stopSelf();
         super.onRevoke();
     }
 
-    @Override
-    public void onDestroy() {
+    @Override public void onDestroy() {
         stopTunnel();
         if (lastStatus != null && (lastStatus.equals(getString(R.string.status_engine_starting))
                 || lastStatus.equals(getString(R.string.status_engine_running_unverified)))) {

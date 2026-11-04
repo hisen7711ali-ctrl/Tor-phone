@@ -1,13 +1,27 @@
 <resources>
     <style name="AppTheme" parent="@android:style/Theme.Material.NoActionBar">
         <item name="android:fontFamily">sans</item>
-        <item name="android:colorAccent">@color/teal</item>
-        <item name="android:statusBarColor">@color/navy</item>
-        <item name="android:navigationBarColor">@color/navy</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:windowBackground">@color/navy</item>
+        <item name="android:colorAccent">#7C5CFF</item>
     </style>
-    <style name="AppTheme.Splash" parent="@style/AppTheme">
+    <style name="AppTheme.Dark" parent="@style/AppTheme">
+        <item name="android:windowBackground">#0A0E1A</item>
+        <item name="android:statusBarColor">#0A0E1A</item>
+        <item name="android:navigationBarColor">#0A0E1A</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:textColorPrimary">#F4F7FF</item>
+        <item name="android:textColorSecondary">#A6B2C7</item>
+        <item name="android:colorAccent">#7C5CFF</item>
+    </style>
+    <style name="AppTheme.Light" parent="@style/AppTheme">
+        <item name="android:windowBackground">#F6F8FC</item>
+        <item name="android:statusBarColor">#F6F8FC</item>
+        <item name="android:navigationBarColor">#F6F8FC</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:textColorPrimary">#182030</item>
+        <item name="android:textColorSecondary">#647084</item>
+        <item name="android:colorAccent">#6C4CE6</item>
+    </style>
+    <style name="AppTheme.Splash" parent="@style/AppTheme.Dark">
         <item name="android:windowBackground">@drawable/splash_screen</item>
     </style>
 </resources>
