@@ -75,27 +75,6 @@ jobs:
       - name: Assemble debug APK
         run: gradle --no-daemon assembleDebug
 
-      - name: Assemble ABI-split release APKs and AAB
-        if: ${{ !contains(github.event.head_commit.message, '[debug-only]') }}
-        continue-on-error: true
-        run: gradle --no-daemon assembleRelease bundleRelease
-
-      - name: List release outputs and sizes
-        run: |
-          find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -printf '%f %s bytes\n' || true
-          find app/build/outputs/bundle/release -maxdepth 1 -type f -name '*.aab' -printf '%f %s bytes\n' || true
-
-      - name: Upload APK and AAB artifacts
-        if: ${{ hashFiles('app/build/outputs/apk/release/*.apk', 'app/build/outputs/bundle/release/*.aab') != '' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: tor-phone-release-apks-and-aab
-          path: |
-            app/build/outputs/apk/release/*.apk
-            app/build/outputs/bundle/release/*.aab
-          if-no-files-found: error
-          retention-days: 14
-
       - name: Verify and report ABI debug APKs
         run: |
           test -s app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
@@ -118,5 +97,26 @@ jobs:
         with:
           name: tor-phone-debug-apk
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Assemble ABI-split release APKs and AAB
+        if: ${{ !contains(github.event.head_commit.message, '[debug-only]') }}
+        continue-on-error: true
+        run: gradle --no-daemon assembleRelease bundleRelease
+
+      - name: List release outputs and sizes
+        run: |
+          find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -printf '%f %s bytes\\n' || true
+          find app/build/outputs/bundle/release -maxdepth 1 -type f -name '*.aab' -printf '%f %s bytes\\n' || true
+
+      - name: Upload APK and AAB artifacts
+        if: ${{ hashFiles('app/build/outputs/apk/release/*.apk', 'app/build/outputs/bundle/release/*.aab') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: tor-phone-release-apks-and-aab
+          path: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/bundle/release/*.aab
           if-no-files-found: error
           retention-days: 14
