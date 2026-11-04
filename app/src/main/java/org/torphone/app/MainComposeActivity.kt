@@ -331,8 +331,8 @@ private fun DashboardScreen(
             style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
         QuickControl("Split Tunneling", "اختر التطبيقات التي تتجاوز Tor", "›", onSplit)
         QuickControl("Bridges · obfs4", "إعداد Bridge lines لتجاوز DPI", "›", onBridges)
-        QuickControl("Sticky Exit", if (sticky) "مفعّل · إيقاف التدوير المجدول" else "غير مفعّل · إعداد تدوير الدوائر", if (sticky) "ON" else "OFF", onSticky)
-        Text("ملاحظة: Sticky Exit يوقف التدوير المجدول فقط؛ ولا يضمن ثبات Public IP لأن MaxCircuitDirtiness غير متاح عبر JNI الحالي.",
+        QuickControl("Sticky Exit · Best effort", if (sticky) "مفعّل · إيقاف التدوير المجدول" else "غير مفعّل · إعداد تحديث الدوائر", if (sticky) "ON" else "OFF", onSticky)
+        Text("ملاحظة: Sticky Exit يوقف التدوير المجدول فقط؛ لا يضمن تثبيت Public IP. Refresh Circuits يؤثر في الاتصالات الجديدة فقط، وقد يختار Tor نفس Exit مجددًا.",
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = .58f),
             style = MaterialTheme.typography.bodySmall)
         Button(onClick = onSettings, modifier = Modifier.fillMaxWidth().height(52.dp)) {
