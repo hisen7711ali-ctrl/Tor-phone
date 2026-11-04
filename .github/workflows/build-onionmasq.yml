@@ -70,6 +70,11 @@ jobs:
           cd third_party/onionmasq/vendor
           sed -i 's/EXPECTED_NDK_VERSION="25.2.9519653"/EXPECTED_NDK_VERSION="27.3.13750724"/' build-ndk.sh
           sed -i 's/  RELEASE="debug"/  RELEASE="release"/; s/  RELEASEFLAG=$/  RELEASEFLAG="--release"/' build-ndk.sh
+          # Keep Rustls as the sole TLS backend. Arti's broad "static" feature
+          # also pulls native-tls/OpenSSL; static-sqlite preserves static SQLite
+          # for Android without enabling that redundant TLS backend.
+          sed -i 's/"rustls", "static"/"rustls", "static-sqlite"/' crates/onion-tunnel/Cargo.toml
+          grep 'arti-client =' crates/onion-tunnel/Cargo.toml
           ./build-ndk.sh arm64-v8a
           ./build-ndk.sh armeabi-v7a
           cd "$GITHUB_WORKSPACE"
