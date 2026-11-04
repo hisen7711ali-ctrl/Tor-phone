@@ -105,6 +105,29 @@ jobs:
         continue-on-error: true
         run: gradle --no-daemon assembleRelease bundleRelease
 
+      - name: Enforce APK size budget (65 MB)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t apks < <(find app/build/outputs/apk -type f -name '*.apk' -print 2>/dev/null | sort)
+          if [ "${#apks[@]}" -eq 0 ]; then
+            echo "::error::No APK files found; size guard cannot validate the build."
+            exit 1
+          fi
+          failed=0
+          for apk in "${apks[@]}"; do
+            bytes=$(stat -c '%s' "$apk")
+            mb=$(awk -v n="$bytes" 'BEGIN { printf "%.2f", n/1000000 }')
+            echo "$apk: $mb MB ($bytes bytes)"
+            if [ "$bytes" -gt 65000000 ]; then
+              echo "::error file=$apk::APK exceeds the 65 MB size budget."
+              failed=1
+            elif [ "$bytes" -gt 60000000 ]; then
+              echo "::warning file=$apk::APK is in the 60–65 MB warning range."
+            fi
+          done
+          exit "$failed"
+
       - name: List release outputs and sizes
         run: |
           find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -printf '%f %s bytes\\n' || true
