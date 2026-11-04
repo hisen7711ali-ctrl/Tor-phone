@@ -27,6 +27,7 @@ import java.util.Set;
 import org.json.JSONObject;
 import java.lang.ref.WeakReference;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 public final class TorPhoneVpnService extends VpnService {
     public static final String ACTION_START = "org.torphone.app.vpn.START";
@@ -47,6 +48,7 @@ public final class TorPhoneVpnService extends VpnService {
     private ParcelFileDescriptor tunInterface;
     private volatile boolean onionmasqBound;
     private volatile boolean tunnelActive;
+    private final AtomicLong tunnelGeneration = new AtomicLong();
 
     private static final class ServiceBinder extends Binder implements ISocketProtect {
         private final WeakReference<TorPhoneVpnService> service;
@@ -118,6 +120,7 @@ public final class TorPhoneVpnService extends VpnService {
     }
 
     private void startTunnel(int startId) {
+        final long generation = tunnelGeneration.incrementAndGet();
         try {
             Builder builder = new Builder()
                     .setSession(getString(R.string.app_name))
@@ -152,7 +155,7 @@ public final class TorPhoneVpnService extends VpnService {
             if (!packetRouter.isRunning()) throw new IOException(getString(R.string.status_engine_failed));
             tunnelActive = true;
             publishStatus(getString(R.string.status_engine_running_unverified));
-            new Thread(this::verifyTorExit, "TorPhone-IP-Verification").start();
+            new Thread(() -> verifyTorExit(generation), "TorPhone-IP-Verification").start();
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) manager.notify(NOTIFICATION_ID,
                     buildNotification(getString(R.string.notification_engine_running)));
@@ -170,9 +173,9 @@ public final class TorPhoneVpnService extends VpnService {
      * It must follow the same VPN routes as app traffic; otherwise a direct
      * underlying-network request could falsely report a Tor exit.
      */
-    private void verifyTorExit() {
+    private void verifyTorExit(long generation) {
         boolean verified = false;
-        for (int attempt = 0; attempt < 3 && tunnelActive; attempt++) {
+        for (int attempt = 0; attempt < 3 && tunnelActive && generation == tunnelGeneration.get(); attempt++) {
             HttpURLConnection connection = null;
             try {
                 connection = (HttpURLConnection) new URL("https://check.torproject.org/api/ip").openConnection();
@@ -205,7 +208,7 @@ public final class TorPhoneVpnService extends VpnService {
                 if (connection != null) connection.disconnect();
             }
         }
-        if (!tunnelActive) return;
+        if (!tunnelActive || generation != tunnelGeneration.get() || !packetRouter.isRunning()) return;
         publishStatus(verified
                 ? getString(R.string.status_verified_protected)
                 : getString(R.string.status_engine_running_unverified));
@@ -243,6 +246,7 @@ public final class TorPhoneVpnService extends VpnService {
     }
 
     private void stopTunnel() {
+        tunnelGeneration.incrementAndGet();
         tunnelActive = false;
         packetRouter.stop();
         if (tunInterface != null) {
