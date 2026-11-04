@@ -99,6 +99,15 @@ public final class TorPhoneVpnService extends VpnService {
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent == null ? null : intent.getAction();
+        String selectedMode = getSharedPreferences(PREFS, MODE_PRIVATE).getString("vpn_mode", "tor");
+        if (!"tor".equals(selectedMode) && (ACTION_START.equals(action) || ACTION_RESTART.equals(action)
+                || (action == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isAlwaysOn()))) {
+            stopTunnel();
+            publishStatus(getString(R.string.state_disconnected));
+            stopSelf(startId);
+            return START_NOT_STICKY;
+        }
+
         if (ACTION_RESTART.equals(action)) {
             stopTunnel();
             publishStatus(getString(R.string.state_disconnected));

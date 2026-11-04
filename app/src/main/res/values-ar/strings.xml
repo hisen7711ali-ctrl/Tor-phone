@@ -58,4 +58,5 @@
 <string name="status_vpn_permission_revoked">توقف اتصال VPN بعد سحب الإذن.</string>
 <string name="bridges_support_title">Bridges · obfs4</string>
 <string name="bridges_support_detail">يمكن إدخال obfs4 Bridge lines من Privacy Settings وتمريرها إلى OnionMasq.start(fd, bridgeLines). قد تساعد Bridges في تجاوز DPI، لكن نجاحها يعتمد على صحة العناوين وإمكانية الوصول إليها وظروف الشبكة.</string>
+    <string name="wireguard_server_manager">مدير خوادم WireGuard</string>
 </resources>

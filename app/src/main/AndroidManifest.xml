@@ -22,6 +22,7 @@
         android:supportsRtl="true"
         android:usesCleartextTraffic="false">
         <activity android:name=".SplitTunnelingActivity" android:exported="false" />
+        <activity android:name=".WireGuardServerManagerActivity" android:exported="false" />
         <activity android:name=".PrivacySettingsActivity" android:exported="false" />
         <activity android:name=".MainComposeActivity" android:exported="false" />
         <activity android:name=".ComposeActivity" android:exported="false" />

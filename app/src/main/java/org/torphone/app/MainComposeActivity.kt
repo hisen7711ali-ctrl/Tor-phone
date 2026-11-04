@@ -7,6 +7,7 @@ import android.content.IntentFilter
 import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.RepeatMode
@@ -55,6 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.torphone.app.vpn.TorPhoneVpnService
+import org.torphone.app.vpn.WireGuardBackend
 
 class MainComposeActivity : ComponentActivity() {
     private var currentStatus by mutableStateOf("")
@@ -62,6 +64,7 @@ class MainComposeActivity : ComponentActivity() {
     private var bytesReceived by mutableLongStateOf(0L)
     private var exitIp by mutableStateOf("")
     private var stickyExit by mutableStateOf(false)
+    private var vpnMode by mutableStateOf("tor")
     private var receiverRegistered = false
 
     private val statusReceiver = object : BroadcastReceiver() {
@@ -83,8 +86,14 @@ class MainComposeActivity : ComponentActivity() {
         ThemePrefs.apply(this)
         currentStatus = TorPhoneVpnService.getLastStatus().orEmpty()
         exitIp = TorPhoneVpnService.getLastVerifiedExitIp()
-        stickyExit = getSharedPreferences("torphone_preferences", MODE_PRIVATE)
-            .getBoolean("privacy_sticky_exit", false)
+        val prefs = getSharedPreferences("torphone_preferences", MODE_PRIVATE)
+        stickyExit = prefs.getBoolean("privacy_sticky_exit", false)
+        vpnMode = prefs.getString("vpn_mode", "tor") ?: "tor"
+        if (vpnMode == "wireguard" && WireGuardBackend.isConnected(this)) {
+            currentStatus = WireGuardBackend.STATUS_CONNECTED
+            bytesSent = WireGuardBackend.getTxBytes(this)
+            bytesReceived = WireGuardBackend.getRxBytes(this)
+        }
 
         setContent {
             val dark = ThemePrefs.isDark(this)
@@ -111,6 +120,42 @@ class MainComposeActivity : ComponentActivity() {
                     received = bytesReceived,
                     exitIp = exitIp,
                     sticky = stickyExit,
+                    mode = vpnMode,
+                    onMode = { selected ->
+                        val prefs = getSharedPreferences("torphone_preferences", MODE_PRIVATE)
+                        when (selected) {
+                            "off" -> {
+                                stopVpn()
+                                vpnMode = "off"
+                                currentStatus = WireGuardBackend.STATUS_DISCONNECTED
+                                prefs.edit().putString("vpn_mode", "off").apply()
+                            }
+                            "wireguard" -> {
+                                if (vpnMode == "tor") {
+                                    val stop = Intent(this, TorPhoneVpnService::class.java).apply {
+                                        action = TorPhoneVpnService.ACTION_STOP
+                                    }
+                                    startService(stop)
+                                }
+                                vpnMode = "wireguard"
+                                currentStatus = WireGuardBackend.STATUS_DISCONNECTED
+                                bytesSent = 0L
+                                bytesReceived = 0L
+                                prefs.edit().putString("vpn_mode", "wireguard").apply()
+                                startActivity(Intent(this, WireGuardServerManagerActivity::class.java))
+                            }
+                            else -> {
+                                if (vpnMode == "wireguard") {
+                                    try { WireGuardBackend.disconnect(this) } catch (error: Exception) {
+                                        Toast.makeText(this, error.message ?: "WireGuard stop failed", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                                vpnMode = "tor"
+                                currentStatus = TorPhoneVpnService.getLastStatus().orEmpty()
+                                prefs.edit().putString("vpn_mode", "tor").apply()
+                            }
+                        }
+                    },
                     onTheme = { ThemePrefs.toggle(this); recreate() },
                     onConnect = { openConnectionControls() },
                     onStop = { stopVpn() },
@@ -143,6 +188,14 @@ class MainComposeActivity : ComponentActivity() {
     }
 
     private fun openConnectionControls() {
+        if (vpnMode == "wireguard") {
+            startActivity(Intent(this, WireGuardServerManagerActivity::class.java))
+            return
+        }
+        if (vpnMode == "off") {
+            Toast.makeText(this, "Select Tor or WireGuard mode first", Toast.LENGTH_SHORT).show()
+            return
+        }
         val permission = VpnService.prepare(this)
         if (permission == null) {
             launchVpnService()
@@ -152,6 +205,7 @@ class MainComposeActivity : ComponentActivity() {
     }
 
     private fun launchVpnService() {
+        getSharedPreferences("torphone_preferences", MODE_PRIVATE).edit().putString("vpn_mode", "tor").apply()
         val intent = Intent(this, TorPhoneVpnService::class.java).apply {
             action = TorPhoneVpnService.ACTION_START
         }
@@ -165,6 +219,17 @@ class MainComposeActivity : ComponentActivity() {
     }
 
     private fun stopVpn() {
+        if (vpnMode == "wireguard") {
+            Thread {
+                try { WireGuardBackend.disconnect(this) } catch (ignored: Exception) { }
+                runOnUiThread {
+                    currentStatus = WireGuardBackend.STATUS_DISCONNECTED
+                    bytesSent = 0L
+                    bytesReceived = 0L
+                }
+            }.start()
+            return
+        }
         val intent = Intent(this, TorPhoneVpnService::class.java).apply {
             action = TorPhoneVpnService.ACTION_STOP
         }
@@ -197,11 +262,13 @@ class MainComposeActivity : ComponentActivity() {
 private fun DashboardScreen(
     dark: Boolean,
     status: String,
+    mode: String,
     sent: Long,
     received: Long,
     exitIp: String,
     sticky: Boolean,
     onTheme: () -> Unit,
+    onMode: (String) -> Unit,
     onConnect: () -> Unit,
     onStop: () -> Unit,
     onSettings: () -> Unit,
@@ -214,14 +281,15 @@ private fun DashboardScreen(
     statusVerified: String,
     statusFailed: String
 ) {
-    val connected = status == statusVerified || status == statusUnverified || status == statusVerifying
+    val wireGuardConnected = mode == "wireguard" && status == WireGuardBackend.STATUS_CONNECTED
+    val connected = status == statusVerified || status == statusUnverified || status == statusVerifying || wireGuardConnected
     val connecting = status == statusConnecting
     val verifying = status == statusVerifying
     val engineUnverified = status == statusUnverified
     val failed = status == statusFailed
     val protected = status == statusVerified
     val accent = when {
-        protected -> Color(0xFF24C99A)
+        protected || wireGuardConnected -> Color(0xFF24C99A)
         verifying || engineUnverified || connecting -> Color(0xFFF0B34F)
         failed -> Color(0xFFFF647C)
         else -> Color(0xFF7C5CFF)
@@ -273,6 +341,7 @@ private fun DashboardScreen(
                         }
                         Text(
                             when {
+                                wireGuardConnected -> "WIREGUARD CONNECTED"
                                 protected -> "PROTECTED"
                                 verifying -> "VERIFYING"
                                 connecting -> "CONNECTING"
@@ -283,7 +352,7 @@ private fun DashboardScreen(
                             color = Color.White, fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleMedium
                         )
-                        Text(if (connected) "Tap to disconnect" else "Connect through Tor",
+                        Text(if (connected) "Tap to disconnect" else if (mode == "wireguard") "Connect with WireGuard" else "Connect through Tor",
                             color = Color.White.copy(alpha = .9f), style = MaterialTheme.typography.bodySmall)
                     }
                 }
@@ -291,6 +360,7 @@ private fun DashboardScreen(
             Spacer(Modifier.height(14.dp))
             Text(
                 when {
+                    wireGuardConnected -> "WireGuard متصل"
                     protected -> "محمي - Verified Tor Exit"
                     verifying -> "جارٍ التحقق من Tor Exit..."
                     engineUnverified -> "Tor Engine يعمل - غير مؤكد"
@@ -303,6 +373,7 @@ private fun DashboardScreen(
             )
             Text(
                 when {
+                    wireGuardConnected -> "Traffic is routed through your WireGuard server"
                     protected -> "Traffic is routed through a verified Tor exit"
                     verifying -> "Verifying Tor exit IP"
                     engineUnverified -> "Engine running · Public IP is not verified"
@@ -339,6 +410,14 @@ private fun DashboardScreen(
             }
         }
 
+        Text("VPN MODE", color = MaterialTheme.colorScheme.onBackground.copy(alpha = .6f),
+            style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton(onClick = { onMode("tor") }, modifier = Modifier.weight(1f)) { Text(if (mode == "tor") "● Tor" else "Tor") }
+            TextButton(onClick = { onMode("wireguard") }, modifier = Modifier.weight(1f)) { Text(if (mode == "wireguard") "● WireGuard" else "WireGuard") }
+            TextButton(onClick = { onMode("off") }, modifier = Modifier.weight(1f)) { Text(if (mode == "off") "● Off" else "Off") }
+        }
+        QuickControl("WireGuard Server Manager", "استيراد وإدارة ملفات .conf الخاصة بك", "›", { onMode("wireguard") })
         Text("QUICK CONTROLS", color = MaterialTheme.colorScheme.onBackground.copy(alpha = .6f),
             style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
         QuickControl("Split Tunneling", "اختر التطبيقات التي تتجاوز Tor", "›", onSplit)

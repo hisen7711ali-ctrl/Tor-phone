@@ -11,6 +11,7 @@ import android.view.View;
 import android.widget.*;
 import org.torphone.app.vpn.OnionmasqRouter;
 import org.torphone.app.vpn.TorPhoneVpnService;
+import org.torphone.app.vpn.WireGuardBackend;
 
 public final class MainActivity extends Activity {
     public static final String ACTION_START_VPN_FROM_COMPOSE = "org.torphone.app.action.START_VPN_FROM_COMPOSE";
@@ -176,6 +177,12 @@ public final class MainActivity extends Activity {
         splitTunneling.setOnClickListener(v ->
                 startActivity(new Intent(this, SplitTunnelingActivity.class)));
         page.addView(splitTunneling, lp(-1, dp(52), 0, 0, 0, dp(12)));
+        Button wireGuardManager = languageButton(R.string.wireguard_server_manager, primary);
+        wireGuardManager.setTextSize(14);
+        wireGuardManager.setMinHeight(dp(52));
+        wireGuardManager.setOnClickListener(v ->
+                startActivity(new Intent(this, WireGuardServerManagerActivity.class)));
+        page.addView(wireGuardManager, lp(-1, dp(52), 0, 0, 0, dp(12)));
         LinearLayout language = panel();
         language.setGravity(Gravity.CENTER_VERTICAL);
         language.setPadding(dp(12), dp(6), dp(12), dp(6));
@@ -252,6 +259,7 @@ public final class MainActivity extends Activity {
     }
 
     private void startVpn() {
+        getSharedPreferences("torphone_preferences", MODE_PRIVATE).edit().putString("vpn_mode", "tor").apply();
         if (OnionmasqRouter.prepare(this) != OnionmasqRouter.INIT_OK) {
             String message = getString(R.string.engine_initialization_failed);
             updateStatus(message);
@@ -275,6 +283,13 @@ public final class MainActivity extends Activity {
     }
 
     private void stopVpn() {
+        if ("wireguard".equals(getSharedPreferences("torphone_preferences", MODE_PRIVATE).getString("vpn_mode", "tor"))) {
+            new Thread(() -> {
+                try { WireGuardBackend.disconnect(this); }
+                catch (Exception error) { runOnUiThread(() -> Toast.makeText(this, error.getMessage(), Toast.LENGTH_LONG).show()); }
+            }).start();
+            return;
+        }
         Intent stop = new Intent(this, TorPhoneVpnService.class);
         stop.setAction(TorPhoneVpnService.ACTION_STOP);
         startService(stop);
@@ -290,6 +305,16 @@ public final class MainActivity extends Activity {
     }
 
     private void updateStatus(String value) {
+        if (statusTitle != null && "wireguard".equals(getSharedPreferences("torphone_preferences", MODE_PRIVATE)
+                .getString("vpn_mode", "tor")) && WireGuardBackend.isConnected(this)) {
+            connected = true;
+            statusTitle.setText("WireGuard Connected");
+            statusSubtitle.setText("Traffic is routed through your WireGuard server");
+            statusTitle.setTextColor(0xFF32C99A);
+            protectionButton.setText(R.string.action_stop_protection);
+            protectionButton.setEnabled(true);
+            return;
+        }
         if (value == null) value = getString(R.string.state_disconnected);
         boolean failed = value.equals(getString(R.string.status_engine_failed))
                 || value.equals(getString(R.string.status_engine_init_failed))

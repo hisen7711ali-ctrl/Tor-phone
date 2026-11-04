@@ -58,4 +58,5 @@
 <string name="status_vpn_permission_revoked">VPN connection stopped because permission was revoked.</string>
 <string name="bridges_support_title">Bridges · obfs4</string>
 <string name="bridges_support_detail">obfs4 bridge lines can now be entered in Privacy Settings and passed to OnionMasq.start(fd, bridgeLines). Bridges may help with DPI blocking, but success depends on valid, reachable bridges and network conditions.</string>
+    <string name="wireguard_server_manager">WireGuard Server Manager</string>
 </resources>
