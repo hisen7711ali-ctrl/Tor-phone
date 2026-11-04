@@ -58,7 +58,9 @@ jobs:
         run: |
           echo "CARGO_PROFILE_RELEASE_STRIP=symbols" >> "$GITHUB_ENV"
           echo "CARGO_PROFILE_RELEASE_OPT_LEVEL=z" >> "$GITHUB_ENV"
-          echo "CARGO_PROFILE_RELEASE_LTO=true" >> "$GITHUB_ENV"
+          echo "CARGO_PROFILE_RELEASE_LTO=fat" >> "$GITHUB_ENV"
+          echo "CARGO_PROFILE_RELEASE_PANIC=abort" >> "$GITHUB_ENV"
+          echo "CARGO_PROFILE_RELEASE_OVERFLOW_CHECKS=false" >> "$GITHUB_ENV"
           echo "CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1" >> "$GITHUB_ENV"
 
       - name: Build arm64-v8a and armeabi-v7a
@@ -72,9 +74,17 @@ jobs:
           ./build-ndk.sh armeabi-v7a
           cd "$GITHUB_WORKSPACE"
           mkdir -p app/src/main/jniLibs/arm64-v8a app/src/main/jniLibs/armeabi-v7a
-          install -m 0644 third_party/onionmasq/vendor/build/arm64-v8a/libonionmasq_mobile.so app/src/main/jniLibs/arm64-v8a/
-          install -m 0644 third_party/onionmasq/vendor/build/armeabi-v7a/libonionmasq_mobile.so app/src/main/jniLibs/armeabi-v7a/
-          file app/src/main/jniLibs/*/*.so
+          STRIP="$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip"
+          for abi in arm64-v8a armeabi-v7a; do
+            src="third_party/onionmasq/vendor/build/$abi/libonionmasq_mobile.so"
+            dst="app/src/main/jniLibs/$abi/libonionmasq_mobile.so"
+            test -s "$src"
+            echo "BEFORE strip [$abi]: $(stat -c '%s bytes' "$src")"
+            install -m 0644 "$src" "$dst"
+            "$STRIP" --strip-all "$dst"
+            echo "AFTER strip  [$abi]: $(stat -c '%s bytes' "$dst")"
+            file "$dst"
+          done
 
       - name: Upload JNI libraries
         uses: actions/upload-artifact@v4
