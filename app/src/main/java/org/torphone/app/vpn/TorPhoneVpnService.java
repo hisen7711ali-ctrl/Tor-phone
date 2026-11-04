@@ -39,14 +39,17 @@ public final class TorPhoneVpnService extends VpnService {
     public static final String EXTRA_STATUS = "status";
     public static final String EXTRA_SENT = "bytes_sent";
     public static final String EXTRA_RECEIVED = "bytes_received";
+    public static final String EXTRA_EXIT_IP = "exit_ip";
 
     private static final String CHANNEL_ID = "tor_phone_vpn";
     private static final int NOTIFICATION_ID = 7001;
     private static final int TUN_MTU = 1500;
     private static final String PREFS = "torphone_preferences";
     private static volatile String lastStatus;
+    private static volatile String lastVerifiedExitIp = "";
 
     public static String getLastStatus() { return lastStatus; }
+    public static String getLastVerifiedExitIp() { return lastVerifiedExitIp; }
 
     private final OnionmasqRouter packetRouter = new OnionmasqRouter();
     private final AtomicBoolean startupInProgress = new AtomicBoolean(false);
@@ -238,7 +241,9 @@ public final class TorPhoneVpnService extends VpnService {
                     String line;
                     while ((line = reader.readLine()) != null) body.append(line);
                 }
-                verified = new JSONObject(body.toString()).optBoolean("IsTor", false);
+                JSONObject response = new JSONObject(body.toString());
+                verified = response.optBoolean("IsTor", false);
+                lastVerifiedExitIp = verified ? response.optString("IP", "") : "";
                 break;
             } catch (Exception error) {
                 if (attempt < 2 && tunnelActive) {
@@ -290,6 +295,7 @@ public final class TorPhoneVpnService extends VpnService {
         Intent update = new Intent(ACTION_STATUS);
         update.setPackage(getPackageName());
         update.putExtra(EXTRA_STATUS, status);
+        update.putExtra(EXTRA_EXIT_IP, lastVerifiedExitIp);
         if (tunnelActive) {
             try {
                 update.putExtra(EXTRA_SENT, OnionMasq.getBytesSent());
@@ -305,6 +311,7 @@ public final class TorPhoneVpnService extends VpnService {
     private void stopTunnel() {
         tunnelGeneration.incrementAndGet();
         tunnelActive = false;
+        lastVerifiedExitIp = "";
         mainHandler.removeCallbacks(trafficTicker);
         getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("vpn_active", false).apply();
         packetRouter.stop();
