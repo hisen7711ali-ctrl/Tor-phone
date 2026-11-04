@@ -53,4 +53,6 @@
 <string name="notification_channel_name">Tor-phone connection</string>
 <string name="notification_channel_description">Tor engine and VPN interface status</string>
 <string name="status_vpn_permission_revoked">VPN connection stopped because permission was revoked.</string>
+<string name="bridges_support_title">Bridges · obfs4</string>
+<string name="bridges_support_detail">Not supported in this build. Arti requires a configured pluggable-transport executable and bridge transport settings; neither is bundled or wired into this app. Do not enable a cosmetic toggle. R4 requires integrating and testing a compatible obfs4 transport.</string>
 </resources>
