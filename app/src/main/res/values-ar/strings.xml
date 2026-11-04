@@ -54,5 +54,5 @@
 <string name="notification_channel_description">حالة محرك Tor وواجهة VPN</string>
 <string name="status_vpn_permission_revoked">توقف اتصال VPN بعد سحب الإذن.</string>
 <string name="bridges_support_title">Bridges · obfs4</string>
-<string name="bridges_support_detail">غير مدعوم في هذا الإصدار. يحتاج Arti إلى ملف تشغيل Pluggable Transport وإعدادات Bridge فعلية؛ وهما غير مضمّنين أو مربوطين بالتطبيق حاليًا. لن نضيف زرًا شكليًا لا يعمل. يتطلب R4 دمج obfs4 متوافق واختباره.</string>
+<string name="bridges_support_detail">تتضمن مكتبات Onionmasq الأصلية المثبّتة دعم Pluggable Transports مثل obfs4 وSnowflake، لكن التطبيق يستدعي OnionMasq دون تمرير bridgeLines؛ لذلك لا يمكن تفعيل النقل أو ضبطه من هذه الواجهة حاليًا. ربطه يتطلب تعديل استدعاء Onionmasq adapter، وهو خارج النطاق بسبب شرط عدم تعديل هذا الجزء. يلزم تنفيذ التكامل واختباره على الجهاز ضمن R4.</string>
 </resources>
