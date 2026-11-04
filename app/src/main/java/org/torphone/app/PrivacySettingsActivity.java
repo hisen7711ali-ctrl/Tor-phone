@@ -99,19 +99,19 @@ public final class PrivacySettingsActivity extends Activity {
         page.addView(stickyTitle);
 
         stickySwitch = new Switch(this);
-        stickySwitch.setText("Sticky Exit · Reduce scheduled rotation");
+        stickySwitch.setText("Sticky Exit · Fixed IP (best effort)");
         stickySwitch.setTextColor(fg);
         stickySwitch.setTextSize(15);
         stickySwitch.setChecked(prefs.getBoolean("privacy_sticky_exit", false));
         page.addView(card(stickySwitch, panel));
 
-        TextView stickyInfo = text("تنبيه تقني: Onionmasq لا يوفّر في JNI الحالي ضبط MaxCircuitDirtiness=86400. هذا الخيار يوقف التدوير الدوري المجدول فقط؛ ولا يضمن ثبات نفس Public IP أو نفس Exit relay لمدة 24 ساعة.", 13,
+        TextView stickyInfo = text("تنبيه تقني: Onionmasq لا يوفّر في JNI الحالي ضبط MaxCircuitDirtiness=86400. هذا الخيار يوقف التدوير الدوري المجدول فقط؛ ولا يضمن ثبات نفس Public IP أو نفس Exit relay لمدة 24 ساعة. Refresh Circuits يطبّق على الاتصالات الجديدة؛ الاتصالات القائمة لا تنتقل تلقائيًا، وقد يختار Tor نفس Exit IP مجددًا.", 13,
                 dark ? Color.rgb(255,195,105) : Color.rgb(153,91,0), false);
         stickyInfo.setPadding(dp(14), dp(12), dp(14), dp(12));
         stickyInfo.setBackground(round(dark ? Color.rgb(54,43,32) : Color.rgb(255,245,225)));
         page.addView(stickyInfo);
 
-        TextView rotationLabel = text("Rotate IP every", 15, fg, true);
+        TextView rotationLabel = text("Refresh Tor circuits every", 15, fg, true);
         rotationLabel.setPadding(0, dp(18), 0, dp(8));
         page.addView(rotationLabel);
 
