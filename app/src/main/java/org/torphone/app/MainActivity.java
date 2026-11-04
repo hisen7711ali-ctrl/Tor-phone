@@ -2,7 +2,7 @@ package org.torphone.app;
 import android.app.Activity;import android.content.*;import android.net.VpnService;import android.os.*;import android.view.Gravity;import android.view.View;import android.widget.*;import org.torphone.app.vpn.OnionmasqRouter;import org.torphone.app.vpn.TorPhoneVpnService;
 public final class MainActivity extends Activity{
  public static final String ACTION_START_VPN_FROM_COMPOSE="org.torphone.app.action.START_VPN_FROM_COMPOSE";
- private static final int VPN_PERMISSION_REQUEST=7101;private TextView modeInfo,dashboardState;private boolean registered;
+ private static final int VPN_PERMISSION_REQUEST=7101;private TextView modeInfo,dashboardState;private Button protectionButton;private boolean registered,connected;
  private final BroadcastReceiver receiver=new BroadcastReceiver(){@Override public void onReceive(Context c,Intent i){if(modeInfo!=null&&i!=null){String s=i.getStringExtra(TorPhoneVpnService.EXTRA_STATUS);String value=s==null?getString(R.string.state_unknown):s;updateStatus(value);}}};
  @Override protected void attachBaseContext(Context b){super.attachBaseContext(LocaleHelper.wrap(b));}
  @Override public void onCreate(Bundle b){super.onCreate(b);getWindow().setStatusBarColor(getColor(R.color.navy));getWindow().setNavigationBarColor(getColor(R.color.navy));render();handleComposeStart(getIntent());}
@@ -15,7 +15,7 @@ public final class MainActivity extends Activity{
   p.addView(label(R.string.brand_name,R.style.TorPhone_Brand));TextView h=label(R.string.dashboard_title,R.style.TorPhone_Headline);h.setPadding(0,sp(R.dimen.space_16),0,sp(R.dimen.space_8));p.addView(h);p.addView(label(R.string.dashboard_subtitle,R.style.TorPhone_Body));
   LinearLayout card=panel();card.setPadding(sp(R.dimen.space_16),sp(R.dimen.space_16),sp(R.dimen.space_16),sp(R.dimen.space_16));card.addView(label(R.string.protection_status,R.style.TorPhone_Section));dashboardState=label(R.string.state_unknown,R.style.TorPhone_HeadlineSmall);dashboardState.setPadding(0,sp(R.dimen.space_8),0,sp(R.dimen.space_4));card.addView(dashboardState);card.addView(label(R.string.status_not_verified_explanation,R.style.TorPhone_Body));p.addView(card,lp(-1,-2,0,0,0,sp(R.dimen.space_24)));
   p.addView(label(R.string.connection_mode_title,R.style.TorPhone_Section));TextView mode=label(R.string.connection_mode_tor_tunnel,R.style.TorPhone_BodyStrong);mode.setPadding(0,sp(R.dimen.space_8),0,sp(R.dimen.space_16));p.addView(mode);modeInfo=label(R.string.state_unknown,R.style.TorPhone_Body);p.addView(modeInfo,lp(-1,-2,0,0,0,sp(R.dimen.space_16)));
-  Button start=new Button(this);start.setText(R.string.action_start_tor);start.setTextAppearance(this,R.style.TorPhone_Button);start.setAllCaps(false);start.setBackgroundResource(R.drawable.bg_primary_button);p.addView(start,lp(-1,sp(R.dimen.button_height),0,0,0,sp(R.dimen.space_24)));start.setOnClickListener(v->startVpn());
+  protectionButton=new Button(this);protectionButton.setText(R.string.action_start_tor);protectionButton.setTextAppearance(this,R.style.TorPhone_Button);protectionButton.setAllCaps(false);protectionButton.setBackgroundResource(R.drawable.bg_primary_button);p.addView(protectionButton,lp(-1,sp(R.dimen.button_height),0,0,0,sp(R.dimen.space_24)));protectionButton.setOnClickListener(v->{if(connected)stopVpn();else startVpn();});
   Button tryUi=new Button(this);tryUi.setText("Try new UI");tryUi.setAllCaps(false);p.addView(tryUi,lp(-1,sp(R.dimen.button_height),0,0,0,sp(R.dimen.space_24)));tryUi.setOnClickListener(v->startActivity(new Intent(this,ComposeActivity.class)));
   p.addView(label(R.string.privacy_center_title,R.style.TorPhone_Section));info(p,R.string.tor_protection_title,R.string.tor_protection_detail);info(p,R.string.vpn_provider_title,R.string.vpn_provider_detail);info(p,R.string.server_configuration_title,R.string.server_configuration_detail);info(p,R.string.location_privacy_title,R.string.location_privacy_detail);info(p,R.string.kill_switch_title,R.string.kill_switch_detail);
   p.addView(label(R.string.settings_title,R.style.TorPhone_Section),lp(-1,-2,0,sp(R.dimen.space_16),0,sp(R.dimen.space_8)));LinearLayout row=panel();row.setGravity(Gravity.CENTER_VERTICAL);row.setOrientation(0);row.setPadding(sp(R.dimen.space_16),sp(R.dimen.space_8),sp(R.dimen.space_16),sp(R.dimen.space_8));row.addView(label(R.string.language_label,R.style.TorPhone_BodyStrong),new LinearLayout.LayoutParams(0,-2,1));Button ar=lang(R.string.language_arabic),en=lang(R.string.language_english);row.addView(ar,new LinearLayout.LayoutParams(0,sp(R.dimen.button_height_small),1));View gap=new View(this);row.addView(gap,new LinearLayout.LayoutParams(sp(R.dimen.space_8),1));row.addView(en,new LinearLayout.LayoutParams(0,sp(R.dimen.button_height_small),1));ar.setOnClickListener(v->LocaleHelper.setLanguage(this,LocaleHelper.LANGUAGE_ARABIC));en.setOnClickListener(v->LocaleHelper.setLanguage(this,LocaleHelper.LANGUAGE_ENGLISH));p.addView(row,lp(-1,-2,0,0,0,sp(R.dimen.space_16)));
@@ -24,6 +24,7 @@ public final class MainActivity extends Activity{
  private Button lang(int id){Button b=new Button(this);b.setText(id);b.setTextAppearance(this,R.style.TorPhone_ButtonSmall);b.setAllCaps(false);b.setBackgroundResource(R.drawable.bg_panel);return b;}
  private void startVpn(){if(OnionmasqRouter.prepare(this)!=OnionmasqRouter.INIT_OK){String m=getString(R.string.engine_initialization_failed);updateStatus(m);Toast.makeText(this,m,Toast.LENGTH_LONG).show();return;}Intent i=VpnService.prepare(this);if(i==null)launchService();else startActivityForResult(i,VPN_PERMISSION_REQUEST);}
  @Override protected void onActivityResult(int r,int result,Intent data){super.onActivityResult(r,result,data);if(r!=VPN_PERMISSION_REQUEST)return;if(result==RESULT_OK)launchService();else{String m=getString(R.string.vpn_permission_denied);updateStatus(m);Toast.makeText(this,m,Toast.LENGTH_LONG).show();}}
+ private void stopVpn(){stopService(new Intent(this,TorPhoneVpnService.class));updateStatus(getString(R.string.state_disconnected));}
  private void launchService(){updateStatus(getString(R.string.status_engine_starting));Intent i=new Intent(this,TorPhoneVpnService.class);i.setAction(TorPhoneVpnService.ACTION_START);if(Build.VERSION.SDK_INT>=26)startForegroundService(i);else startService(i);}
  private void updateStatus(String value){
   boolean failed=value.equals(getString(R.string.status_engine_failed))
@@ -36,6 +37,12 @@ public final class MainActivity extends Activity{
   int color=failed?getColor(R.color.error):warning?getColor(R.color.amber)
       :(value.equals(getString(R.string.state_unknown))||value.equals(getString(R.string.state_disconnected)))
       ?getColor(R.color.muted):getColor(R.color.white);
+  connected=value.equals(getString(R.string.status_engine_running_unverified));
+  boolean starting=value.equals(getString(R.string.status_engine_starting));
+  if(protectionButton!=null){
+   protectionButton.setText(connected?R.string.action_stop_protection:R.string.action_start_tor);
+   protectionButton.setEnabled(!starting);
+  }
   animateStatus(modeInfo,value,color);
   animateStatus(dashboardState,value,color);
  }
