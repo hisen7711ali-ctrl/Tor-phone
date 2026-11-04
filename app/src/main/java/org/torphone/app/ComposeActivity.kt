@@ -158,7 +158,7 @@ class ComposeActivity : ComponentActivity() {
                                 startActivity(intent)
                             }
                         ) { Text("Open connection controls") }
-                        Text("الحالة المعروضة تخص Engine فقط؛ لا تعني نجاح اختبار Public IP أو منع التسرب.",
+                        Text("التحقق الأخضر يؤكد Tor Exit فقط؛ ولا يغني عن اختبارات DNS وIPv6 وKill Switch.",
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = .65f))
                     }
                 }
