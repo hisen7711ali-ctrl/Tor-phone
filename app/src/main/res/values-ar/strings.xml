@@ -42,6 +42,8 @@
 <string name="footer_transparent_status">حالة واضحة • الصلاحيات بيد المستخدم</string>
 <string name="engine_initialization_failed">فشلت تهيئة Engine. لم يبدأ نفق VPN.</string>
 <string name="vpn_permission_denied">لم تتم الموافقة على VPN. لم يبدأ النفق.</string>
+<string name="badge_verifying_subtitle">جارٍ فحص Public IP للتأكد من Tor Exit</string>
+<string name="status_verifying_ip">جارٍ التحقق من Tor Exit وPublic IP.</string>
 <string name="status_engine_starting">جارٍ تجهيز محرك Tor وتشغيل خدمة VPN…</string>
 <string name="status_engine_failed">فشل Engine: توقف Onionmasq.</string>
 <string name="status_engine_init_failed">فشلت تهيئة Engine.</string>

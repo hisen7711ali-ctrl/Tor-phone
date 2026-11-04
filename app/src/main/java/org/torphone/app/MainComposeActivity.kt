@@ -124,8 +124,16 @@ class MainComposeActivity : ComponentActivity() {
                             .putBoolean("privacy_sticky_exit", next)
                             .apply()
                         CircuitRotationScheduler.apply(this)
+                        if (getSharedPreferences("torphone_preferences", MODE_PRIVATE)
+                                .getBoolean("vpn_active", false)) {
+                            val restart = Intent(this, TorPhoneVpnService::class.java).apply {
+                                action = TorPhoneVpnService.ACTION_RESTART
+                            }
+                            if (Build.VERSION.SDK_INT >= 26) startForegroundService(restart) else startService(restart)
+                        }
                     },
                     statusConnecting = getString(R.string.status_engine_starting),
+                    statusVerifying = getString(R.string.status_verifying_ip),
                     statusUnverified = getString(R.string.status_engine_running_unverified),
                     statusVerified = getString(R.string.status_verified_protected),
                     statusFailed = getString(R.string.status_engine_failed)
@@ -201,29 +209,31 @@ private fun DashboardScreen(
     onBridges: () -> Unit,
     onSticky: () -> Unit,
     statusConnecting: String,
+    statusVerifying: String,
     statusUnverified: String,
     statusVerified: String,
     statusFailed: String
 ) {
-    val connected = status == statusVerified || status == statusUnverified
+    val connected = status == statusVerified || status == statusUnverified || status == statusVerifying
     val connecting = status == statusConnecting
-    val verifying = status == statusUnverified
+    val verifying = status == statusVerifying
+    val engineUnverified = status == statusUnverified
     val failed = status == statusFailed
     val protected = status == statusVerified
     val accent = when {
         protected -> Color(0xFF24C99A)
-        verifying || connecting -> Color(0xFFF0B34F)
+        verifying || engineUnverified || connecting -> Color(0xFFF0B34F)
         failed -> Color(0xFFFF647C)
         else -> Color(0xFF7C5CFF)
     }
     val pulseTransition = rememberInfiniteTransition(label = "connectPulse")
     val pulse by pulseTransition.animateFloat(
         initialValue = 1f,
-        targetValue = if (connecting) 1.055f else 1f,
+        targetValue = if (connecting || verifying) 1.055f else 1f,
         animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
         label = "pulseScale"
     )
-    val buttonScale by animateFloatAsState(if (connecting) pulse else 1f, label = "buttonScale")
+    val buttonScale by animateFloatAsState(if (connecting || verifying) pulse else 1f, label = "buttonScale")
 
     Column(
         modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
@@ -282,7 +292,8 @@ private fun DashboardScreen(
             Text(
                 when {
                     protected -> "محمي - Verified Tor Exit"
-                    verifying -> "Tor Engine يعمل - جارٍ التحقق"
+                    verifying -> "جارٍ التحقق من Tor Exit..."
+                    engineUnverified -> "Tor Engine يعمل - غير مؤكد"
                     connecting -> "جارٍ الاتصال..."
                     failed -> "فشل الاتصال"
                     else -> "غير متصل"
@@ -293,7 +304,8 @@ private fun DashboardScreen(
             Text(
                 when {
                     protected -> "Traffic is routed through a verified Tor exit"
-                    verifying -> "Checking Tor exit status"
+                    verifying -> "Verifying Tor exit IP"
+                    engineUnverified -> "Engine running · Public IP is not verified"
                     connecting -> "Establishing Tor circuit"
                     failed -> "Check logs for details"
                     else -> "Ready to connect"

@@ -297,7 +297,7 @@ public final class MainActivity extends Activity {
                 || value.equals(getString(R.string.engine_initialization_failed))
                 || value.equals(getString(R.string.vpn_permission_denied))
                 || value.equals(getString(R.string.status_vpn_permission_revoked));
-        boolean starting = value.equals(getString(R.string.status_engine_starting));
+        boolean starting = value.equals(getString(R.string.status_engine_starting)) || value.equals(getString(R.string.status_verifying_ip));
         boolean verified = value.equals(getString(R.string.status_verified_protected));
         connected = verified || value.equals(getString(R.string.status_engine_running_unverified));
         if (statusTitle == null) return;
@@ -310,6 +310,7 @@ public final class MainActivity extends Activity {
                 : connected ? R.string.badge_engine_running
                 : R.string.badge_disconnected);
         statusSubtitle.setText(failed ? R.string.badge_failed_subtitle
+                : value.equals(getString(R.string.status_verifying_ip)) ? R.string.badge_verifying_subtitle
                 : starting ? R.string.badge_connecting_subtitle
                 : verified ? R.string.badge_verified_subtitle
                 : connected ? R.string.badge_engine_running_subtitle

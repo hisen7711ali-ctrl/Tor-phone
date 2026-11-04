@@ -42,6 +42,8 @@
 <string name="footer_transparent_status">TRANSPARENT STATUS • USER-CONTROLLED PERMISSIONS</string>
 <string name="engine_initialization_failed">Engine initialization failed. The VPN tunnel was not started.</string>
 <string name="vpn_permission_denied">VPN permission was not granted. The tunnel was not started.</string>
+<string name="badge_verifying_subtitle">Checking the public IP against Tor exit status</string>
+<string name="status_verifying_ip">Verifying Tor exit IP.</string>
 <string name="status_engine_starting">Preparing the Tor engine and starting the VPN service…</string>
 <string name="status_engine_failed">Engine failure: Onionmasq stopped.</string>
 <string name="status_engine_init_failed">Engine initialization failed.</string>

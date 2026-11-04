@@ -47,6 +47,8 @@ public final class TorPhoneVpnService extends VpnService {
     private static final String PREFS = "torphone_preferences";
     private static volatile String lastStatus;
     private static volatile String lastVerifiedExitIp = "";
+    private static volatile boolean globalTunnelActive;
+    public static boolean isTunnelActive() { return globalTunnelActive; }
 
     public static String getLastStatus() { return lastStatus; }
     public static String getLastVerifiedExitIp() { return lastVerifiedExitIp; }
@@ -79,6 +81,7 @@ public final class TorPhoneVpnService extends VpnService {
 
     @Override public void onCreate() {
         super.onCreate();
+        CircuitRotationScheduler.apply(this);
         createNotificationChannel();
         publishStatus(getString(R.string.state_disconnected));
         packetRouter.setFailureListener(error -> {
@@ -204,6 +207,9 @@ public final class TorPhoneVpnService extends VpnService {
                 throw new IOException("Use Bridges is enabled but no bridge lines are configured");
             }
             if (bridgeLines != null && bridgeLines.trim().isEmpty()) bridgeLines = null;
+            String country = prefs.getBoolean("privacy_sticky_exit", false)
+                    ? prefs.getString("privacy_sticky_country", "").trim().toUpperCase(java.util.Locale.ROOT) : "";
+            OnionMasq.setCountryCode(country.matches("[A-Z]{2}") ? country : null);
 
             packetRouter.start(tunInterface, bridgeLines);
             tunInterface.close();
@@ -211,8 +217,9 @@ public final class TorPhoneVpnService extends VpnService {
 
             if (!packetRouter.isRunning()) throw new IOException(getString(R.string.status_engine_failed));
             tunnelActive = true;
+            globalTunnelActive = true;
             prefs.edit().putBoolean("vpn_active", true).apply();
-            publishStatus(getString(R.string.status_engine_running_unverified));
+            publishStatus(getString(R.string.status_verifying_ip));
             mainHandler.removeCallbacks(trafficTicker);
             mainHandler.post(trafficTicker);
             new Thread(() -> verifyTorExit(generation), "TorPhone-IP-Verification").start();
@@ -324,6 +331,7 @@ public final class TorPhoneVpnService extends VpnService {
     private void stopTunnel() {
         tunnelGeneration.incrementAndGet();
         tunnelActive = false;
+        globalTunnelActive = false;
         lastVerifiedExitIp = "";
         mainHandler.removeCallbacks(trafficTicker);
         getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("vpn_active", false).apply();
@@ -350,6 +358,7 @@ public final class TorPhoneVpnService extends VpnService {
         stopTunnel();
         if (lastStatus != null && (lastStatus.equals(getString(R.string.status_engine_starting))
                 || lastStatus.equals(getString(R.string.status_engine_running_unverified))
+                || lastStatus.equals(getString(R.string.status_verifying_ip))
                 || lastStatus.equals(getString(R.string.status_verified_protected)))) {
             publishStatus(getString(R.string.state_disconnected));
         }

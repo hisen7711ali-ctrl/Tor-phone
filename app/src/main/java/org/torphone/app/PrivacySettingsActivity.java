@@ -29,6 +29,7 @@ public final class PrivacySettingsActivity extends Activity {
     private Switch bridgesSwitch;
     private Switch stickySwitch;
     private EditText bridgeInput;
+    private EditText countryInput;
     private Spinner rotationSpinner;
     private boolean dark;
 
@@ -111,6 +112,18 @@ public final class PrivacySettingsActivity extends Activity {
         stickyInfo.setBackground(round(dark ? Color.rgb(54,43,32) : Color.rgb(255,245,225)));
         page.addView(stickyInfo);
 
+        TextView countryLabel = text("Preferred Exit Country (optional)", 14, fg, true);
+        countryLabel.setPadding(0, dp(12), 0, dp(6));
+        page.addView(countryLabel);
+        countryInput = new EditText(this);
+        countryInput.setSingleLine(true);
+        countryInput.setTextColor(fg);
+        countryInput.setHintTextColor(secondary);
+        countryInput.setHint("2-letter country code, e.g. DE");
+        countryInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
+        countryInput.setText(prefs.getString("privacy_sticky_country", ""));
+        page.addView(card(countryInput, panel));
+
         TextView rotationLabel = text("Refresh Tor circuits every", 15, fg, true);
         rotationLabel.setPadding(0, dp(18), 0, dp(8));
         page.addView(rotationLabel);
@@ -164,12 +177,18 @@ public final class PrivacySettingsActivity extends Activity {
             return;
         }
 
+        String country = countryInput.getText().toString().trim().toUpperCase(java.util.Locale.ROOT);
+        if (!country.isEmpty() && !country.matches("[A-Z]{2}")) {
+            countryInput.setError("Enter a 2-letter country code");
+            return;
+        }
         int rotationMinutes = rotationValues[rotationSpinner.getSelectedItemPosition()];
         boolean sticky = stickySwitch.isChecked();
         getSharedPreferences(PREFS, MODE_PRIVATE).edit()
                 .putBoolean("use_bridges", useBridges)
                 .putString("bridge_lines", String.join("\n", validLines))
                 .putBoolean("privacy_sticky_exit", sticky)
+                .putString("privacy_sticky_country", country)
                 .putInt("privacy_rotation_minutes", rotationMinutes)
                 .apply();
         CircuitRotationScheduler.apply(this);
