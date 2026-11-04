@@ -8,7 +8,9 @@ import android.content.pm.PackageManager;
 import android.net.VpnService;
 import android.os.Binder;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.ParcelFileDescriptor;
 import org.torphone.app.R;
 
@@ -32,12 +34,16 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class TorPhoneVpnService extends VpnService {
     public static final String ACTION_START = "org.torphone.app.vpn.START";
     public static final String ACTION_STOP = "org.torphone.app.vpn.STOP";
+    public static final String ACTION_RESTART = "org.torphone.app.vpn.RESTART";
     public static final String ACTION_STATUS = "org.torphone.app.vpn.STATUS";
     public static final String EXTRA_STATUS = "status";
+    public static final String EXTRA_SENT = "bytes_sent";
+    public static final String EXTRA_RECEIVED = "bytes_received";
 
     private static final String CHANNEL_ID = "tor_phone_vpn";
     private static final int NOTIFICATION_ID = 7001;
     private static final int TUN_MTU = 1500;
+    private static final String PREFS = "torphone_preferences";
     private static volatile String lastStatus;
 
     public static String getLastStatus() { return lastStatus; }
@@ -45,10 +51,19 @@ public final class TorPhoneVpnService extends VpnService {
     private final OnionmasqRouter packetRouter = new OnionmasqRouter();
     private final AtomicBoolean startupInProgress = new AtomicBoolean(false);
     private final IBinder serviceBinder = new ServiceBinder(this);
+    private final AtomicLong tunnelGeneration = new AtomicLong();
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private ParcelFileDescriptor tunInterface;
     private volatile boolean onionmasqBound;
     private volatile boolean tunnelActive;
-    private final AtomicLong tunnelGeneration = new AtomicLong();
+
+    private final Runnable trafficTicker = new Runnable() {
+        @Override public void run() {
+            if (!tunnelActive) return;
+            publishStatusBroadcast(lastStatus);
+            mainHandler.postDelayed(this, 2000L);
+        }
+    };
 
     private static final class ServiceBinder extends Binder implements ISocketProtect {
         private final WeakReference<TorPhoneVpnService> service;
@@ -78,8 +93,19 @@ public final class TorPhoneVpnService extends VpnService {
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent == null ? null : intent.getAction();
-        // Android may restart an Always-on VPN service with a null Intent.
-        // Only auto-start in that case when the user enabled Always-on VPN.
+        if (ACTION_RESTART.equals(action)) {
+            stopTunnel();
+            publishStatus(getString(R.string.state_disconnected));
+            startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.notification_engine_starting)));
+            mainHandler.postDelayed(() -> {
+                startupInProgress.set(false);
+                if (startupInProgress.compareAndSet(false, true)) {
+                    new Thread(() -> startTunnel(startId), "TorPhone-VPN-Restart").start();
+                }
+            }, 1200L);
+            return START_NOT_STICKY;
+        }
+
         if (action == null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isAlwaysOn()) {
             action = ACTION_START;
         }
@@ -99,7 +125,6 @@ public final class TorPhoneVpnService extends VpnService {
             stopSelf(startId);
             return START_NOT_STICKY;
         }
-
         if (!onionmasqBound) {
             try {
                 OnionMasq.bindVPNService(TorPhoneVpnService.class);
@@ -132,37 +157,43 @@ public final class TorPhoneVpnService extends VpnService {
                     .addDnsServer("169.254.42.53")
                     .addDnsServer("fe80::53");
 
-            // Apps selected in Split Tunneling use Android's normal network, outside Tor.
             Set<String> bypassPackages = new HashSet<>(getSharedPreferences(
-                    "torphone_preferences", MODE_PRIVATE).getStringSet(
+                    PREFS, MODE_PRIVATE).getStringSet(
                     "split_tunnel_bypass_packages", java.util.Collections.emptySet()));
             for (String packageName : bypassPackages) {
                 if (packageName == null || packageName.isEmpty() || packageName.equals(getPackageName())) continue;
-                try {
-                    builder.addDisallowedApplication(packageName);
-                } catch (PackageManager.NameNotFoundException ignored) {
-                    // The user may have uninstalled an app after selecting it.
-                }
+                try { builder.addDisallowedApplication(packageName); }
+                catch (PackageManager.NameNotFoundException ignored) { }
             }
 
             tunInterface = builder.establish();
             if (tunInterface == null) throw new IOException(getString(R.string.status_engine_failed));
 
-            packetRouter.start(tunInterface);
+            android.content.SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+            String bridgeLines = prefs.getBoolean("use_bridges", false)
+                    ? prefs.getString("bridge_lines", null) : null;
+            if (bridgeLines != null && bridgeLines.trim().isEmpty()) bridgeLines = null;
+
+            packetRouter.start(tunInterface, bridgeLines);
             tunInterface.close();
             tunInterface = null;
 
             if (!packetRouter.isRunning()) throw new IOException(getString(R.string.status_engine_failed));
             tunnelActive = true;
+            prefs.edit().putBoolean("vpn_active", true).apply();
             publishStatus(getString(R.string.status_engine_running_unverified));
+            mainHandler.removeCallbacks(trafficTicker);
+            mainHandler.post(trafficTicker);
             new Thread(() -> verifyTorExit(generation), "TorPhone-IP-Verification").start();
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) manager.notify(NOTIFICATION_ID,
                     buildNotification(getString(R.string.notification_engine_running)));
         } catch (Throwable error) {
-            publishStatus(getString(R.string.status_engine_failed));
-            stopTunnel();
-            stopSelf(startId);
+            if (generation == tunnelGeneration.get()) {
+                publishStatus(getString(R.string.status_engine_failed));
+                stopTunnel();
+                stopSelf(startId);
+            }
         } finally {
             startupInProgress.set(false);
         }
@@ -170,8 +201,8 @@ public final class TorPhoneVpnService extends VpnService {
 
     /**
      * This request is intentionally NOT protected with VpnService.protect().
-     * It must follow the same VPN routes as app traffic; otherwise a direct
-     * underlying-network request could falsely report a Tor exit.
+     * It must follow the VPN routes; a direct underlying-network request could
+     * falsely report a Tor exit.
      */
     private void verifyTorExit(long generation) {
         boolean verified = false;
@@ -185,9 +216,7 @@ public final class TorPhoneVpnService extends VpnService {
                 connection.setUseCaches(false);
                 connection.setRequestProperty("Accept", "application/json");
                 int code = connection.getResponseCode();
-                if (code != HttpURLConnection.HTTP_OK) {
-                    throw new IOException("Tor check HTTP " + code);
-                }
+                if (code != HttpURLConnection.HTTP_OK) throw new IOException("Tor check HTTP " + code);
                 StringBuilder body = new StringBuilder();
                 try (InputStream stream = connection.getInputStream();
                      BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
@@ -239,15 +268,30 @@ public final class TorPhoneVpnService extends VpnService {
 
     private void publishStatus(String status) {
         lastStatus = status;
+        publishStatusBroadcast(status);
+    }
+
+    private void publishStatusBroadcast(String status) {
         Intent update = new Intent(ACTION_STATUS);
         update.setPackage(getPackageName());
         update.putExtra(EXTRA_STATUS, status);
+        if (tunnelActive) {
+            try {
+                update.putExtra(EXTRA_SENT, OnionMasq.getBytesSent());
+                update.putExtra(EXTRA_RECEIVED, OnionMasq.getBytesReceived());
+            } catch (Throwable ignored) { }
+        } else {
+            update.putExtra(EXTRA_SENT, 0L);
+            update.putExtra(EXTRA_RECEIVED, 0L);
+        }
         sendBroadcast(update);
     }
 
     private void stopTunnel() {
         tunnelGeneration.incrementAndGet();
         tunnelActive = false;
+        mainHandler.removeCallbacks(trafficTicker);
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("vpn_active", false).apply();
         packetRouter.stop();
         if (tunInterface != null) {
             try { tunInterface.close(); } catch (IOException ignored) { }
