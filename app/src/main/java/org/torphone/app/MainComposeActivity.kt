@@ -125,7 +125,6 @@ class MainComposeActivity : ComponentActivity() {
                             .apply()
                         CircuitRotationScheduler.apply(this)
                     },
-                    statusDisconnected = getString(R.string.state_disconnected),
                     statusConnecting = getString(R.string.status_engine_starting),
                     statusUnverified = getString(R.string.status_engine_running_unverified),
                     statusVerified = getString(R.string.status_verified_protected),
@@ -136,11 +135,25 @@ class MainComposeActivity : ComponentActivity() {
     }
 
     private fun openConnectionControls() {
-        val intent = Intent(this, MainActivity::class.java).apply {
-            action = MainActivity.ACTION_START_VPN_FROM_COMPOSE
-            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        val permission = VpnService.prepare(this)
+        if (permission == null) {
+            launchVpnService()
+        } else {
+            startActivityForResult(permission, 7102)
         }
-        startActivity(intent)
+    }
+
+    private fun launchVpnService() {
+        val intent = Intent(this, TorPhoneVpnService::class.java).apply {
+            action = TorPhoneVpnService.ACTION_START
+        }
+        if (Build.VERSION.SDK_INT >= 26) startForegroundService(intent) else startService(intent)
+    }
+
+    @Deprecated("Deprecated by Android; retained for the VPN consent activity result")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 7102 && resultCode == RESULT_OK) launchVpnService()
     }
 
     private fun stopVpn() {
@@ -187,7 +200,6 @@ private fun DashboardScreen(
     onSplit: () -> Unit,
     onBridges: () -> Unit,
     onSticky: () -> Unit,
-    statusDisconnected: String,
     statusConnecting: String,
     statusUnverified: String,
     statusVerified: String,
@@ -233,7 +245,7 @@ private fun DashboardScreen(
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = .6f))
             Spacer(Modifier.height(18.dp))
             Surface(
-                onClick = { if (connected) onStop() else onConnect() },
+                onClick = { if (!connecting) { if (connected) onStop() else onConnect() } },
                 modifier = Modifier.size(218.dp).scale(buttonScale),
                 shape = CircleShape,
                 color = accent,
