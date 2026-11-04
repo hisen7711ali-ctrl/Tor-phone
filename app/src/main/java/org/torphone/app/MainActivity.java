@@ -131,6 +131,13 @@ public final class MainActivity extends Activity {
         status.addView(statusSubtitle);
         page.addView(status, lp(-1, -2, 0, dp(22), 0, dp(22)));
 
+        Button newDashboard = languageButton(R.string.open_proton_ui, primary);
+        newDashboard.setTextSize(14);
+        newDashboard.setMinHeight(dp(50));
+        newDashboard.setOnClickListener(v ->
+                startActivity(new Intent(this, MainComposeActivity.class)));
+        page.addView(newDashboard, lp(-1, dp(50), 0, 0, 0, dp(14)));
+
         TextView connectionTitle = text(R.string.connection_mode_title, 11, secondary, true);
         connectionTitle.setLetterSpacing(.12f);
         page.addView(connectionTitle);
