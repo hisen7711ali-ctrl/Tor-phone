@@ -148,8 +148,10 @@ public final class PrivacySettingsActivity extends Activity {
             String value = line.trim();
             if (value.isEmpty() || value.startsWith("#")) continue;
             String[] parts = value.split("\\s+");
+            String[] endpoint = parts.length > 1 ? parts[1].split(":") : new String[0];
             if (parts.length < 5 || !"obfs4".equals(parts[0])
-                    || !parts[1].matches(".+:\\\\d+")
+                    || endpoint.length != 2 || endpoint[0].isEmpty()
+                    || !endpoint[1].matches("[0-9]{1,5}")
                     || !parts[2].matches("[A-Fa-f0-9]{40}")
                     || !value.contains("cert=") || !value.contains("iat-mode=")) {
                 Toast.makeText(this, "صيغة Bridge غير صحيحة. استخدم obfs4 host:port fingerprint cert=... iat-mode=0", Toast.LENGTH_LONG).show();
