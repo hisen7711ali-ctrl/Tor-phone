@@ -16,8 +16,10 @@
 <string name="badge_disconnected_subtitle">Ready to connect</string>
 <string name="badge_connecting">جارٍ الاتصال...</string>
 <string name="badge_connecting_subtitle">Establishing Tor circuit</string>
-<string name="badge_engine_running">Tor Engine يعمل</string>
-<string name="badge_engine_running_subtitle">Engine running · IP routing is not verified yet</string>
+<string name="badge_engine_running">Tor Engine يعمل - غير مؤكد</string>
+<string name="badge_engine_running_subtitle">Engine running · Public IP is not verified</string>
+<string name="badge_verified_protected">محمي - Verified Tor Exit</string>
+<string name="badge_verified_subtitle">Traffic is routed through a verified Tor exit</string>
 <string name="badge_failed">فشل الاتصال</string>
 <string name="badge_failed_subtitle">Check logs for details</string>
 <string name="privacy_center_title">مركز الخصوصية</string>
@@ -32,6 +34,7 @@
 <string name="kill_switch_title">Kill Switch · Network Lockdown</string>
 <string name="kill_switch_detail">للحجب عند انقطاع VPN، فعّل Always-on VPN ثم Block connections without VPN من إعدادات Android. دعم النظام مفعّل في التطبيق، لكن الحماية لا تُفرض قبل تفعيل Lockdown يدويًا.</string>
 <string name="settings_title">الإعدادات</string>
+<string name="split_tunneling_title">Split Tunneling · إعداد التطبيقات المستثناة</string>
 <string name="language_label">اللغة</string>
 <string name="language_arabic">العربية</string>
 <string name="language_english">English</string>
@@ -43,8 +46,10 @@
 <string name="status_engine_init_failed">فشلت تهيئة Engine.</string>
 <string name="status_socket_protection_failed">فشل Engine: تعذر ربط حماية VPN sockets.</string>
 <string name="status_engine_running_unverified">محرك Tor يعمل. لم يتم التحقق بعد من جاهزية الشبكة أو Public IP.</string>
+<string name="status_verified_protected">تم التحقق من Tor Exit عبر check.torproject.org.</string>
 <string name="notification_engine_starting">جارٍ تجهيز محرك Tor</string>
 <string name="notification_engine_running">محرك Tor يعمل؛ جاهزية الشبكة غير مؤكدة</string>
+<string name="notification_verified_protected">تم التحقق من Tor Exit · حركة الشبكة تمر عبر Tor</string>
 <string name="notification_channel_name">اتصال Tor-phone</string>
 <string name="notification_channel_description">حالة محرك Tor وواجهة VPN</string>
 <string name="status_vpn_permission_revoked">توقف اتصال VPN بعد سحب الإذن.</string>
