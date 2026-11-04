@@ -9,6 +9,9 @@ import java.io.IOException;
 public interface PacketRouter {
     int init(Context context);
     void start(ParcelFileDescriptor tunInterface) throws IOException;
+    default void start(ParcelFileDescriptor tunInterface, String bridgeLines) throws IOException {
+        start(tunInterface);
+    }
     void stop();
     boolean isRunning();
 }
