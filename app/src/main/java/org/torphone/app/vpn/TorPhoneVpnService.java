@@ -198,8 +198,11 @@ public final class TorPhoneVpnService extends VpnService {
             if (tunInterface == null) throw new IOException(getString(R.string.status_engine_failed));
 
             android.content.SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-            String bridgeLines = prefs.getBoolean("use_bridges", false)
-                    ? prefs.getString("bridge_lines", null) : null;
+            boolean useBridges = prefs.getBoolean("use_bridges", false);
+            String bridgeLines = useBridges ? prefs.getString("bridge_lines", null) : null;
+            if (useBridges && (bridgeLines == null || bridgeLines.trim().isEmpty())) {
+                throw new IOException("Use Bridges is enabled but no bridge lines are configured");
+            }
             if (bridgeLines != null && bridgeLines.trim().isEmpty()) bridgeLines = null;
 
             packetRouter.start(tunInterface, bridgeLines);
