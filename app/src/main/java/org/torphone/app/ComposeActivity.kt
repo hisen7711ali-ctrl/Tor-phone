@@ -42,7 +42,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import org.torphone.app.vpn.TorPhoneVpnService
 
-enum class ProofVpnState { DISCONNECTED, CONNECTING, RUNNING_UNVERIFIED, FAILED }
+enum class ProofVpnState { DISCONNECTED, CONNECTING, RUNNING_UNVERIFIED, VERIFIED_PROTECTED, FAILED }
 
 class ProofStatusViewModel : ViewModel() {
     private val _state = MutableStateFlow(ProofVpnState.DISCONNECTED)
@@ -112,6 +112,7 @@ class ComposeActivity : ComponentActivity() {
                         }
                         val connectedColor by animateColorAsState(
                             if (state == ProofVpnState.RUNNING_UNVERIFIED) Color(0xFFF3B95F)
+                            else if (state == ProofVpnState.VERIFIED_PROTECTED) Color(0xFF32D6A0)
                             else if (state == ProofVpnState.FAILED) Color(0xFFFF647C)
                             else MaterialTheme.colorScheme.primary, label = "statusColor"
                         )
@@ -128,7 +129,8 @@ class ComposeActivity : ComponentActivity() {
                                 Text(
                                     when (state) {
                                         ProofVpnState.CONNECTING -> "جارٍ الاتصال..."
-                                        ProofVpnState.RUNNING_UNVERIFIED -> "Tor Engine يعمل"
+                                        ProofVpnState.RUNNING_UNVERIFIED -> "Tor Engine يعمل - غير مؤكد"
+                                        ProofVpnState.VERIFIED_PROTECTED -> "محمي - Verified Tor Exit"
                                         ProofVpnState.FAILED -> "فشل الاتصال"
                                         else -> "غير متصل"
                                     },
@@ -137,7 +139,8 @@ class ComposeActivity : ComponentActivity() {
                                 Text(
                                     when (state) {
                                         ProofVpnState.CONNECTING -> "Establishing Tor circuit"
-                                        ProofVpnState.RUNNING_UNVERIFIED -> "Engine is running; IP routing is not verified"
+                                        ProofVpnState.RUNNING_UNVERIFIED -> "Engine running · Public IP is not verified"
+                                        ProofVpnState.VERIFIED_PROTECTED -> "Traffic is routed through a verified Tor exit"
                                         ProofVpnState.FAILED -> "Check logs for details"
                                         else -> "Ready to connect"
                                     },
@@ -186,6 +189,7 @@ class ComposeActivity : ComponentActivity() {
     private fun resolveState(status: String?): ProofVpnState = when (status) {
         getString(R.string.status_engine_starting) -> ProofVpnState.CONNECTING
         getString(R.string.status_engine_running_unverified) -> ProofVpnState.RUNNING_UNVERIFIED
+        getString(R.string.status_verified_protected) -> ProofVpnState.VERIFIED_PROTECTED
         getString(R.string.status_engine_failed),
         getString(R.string.status_engine_init_failed),
         getString(R.string.status_socket_protection_failed),
