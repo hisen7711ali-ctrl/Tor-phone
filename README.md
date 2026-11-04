@@ -1,3 +1,7 @@
+[![Build](https://github.com/hisen7711ali-ctrl/Tor-phone/actions/workflows/android-build.yml/badge.svg?branch=main)](https://github.com/hisen7711ali-ctrl/Tor-phone/actions/workflows/android-build.yml)
+![Latest Release](https://img.shields.io/github/v/release/hisen7711ali-ctrl/Tor-phone)
+![Size](https://img.shields.io/badge/APK%20size-~68%20MB-orange)
+
 # Tor-phone
 
 تطبيق أندرويد تجريبي يدمج خدمة VPN في Android مع محرك Tor مبني على Arti وOnionmasq. الهدف هو توجيه حركة الشبكة عبر Tor من خلال نفق VPN محلي، دون الاعتماد على تطبيق Orbot منفصل.
@@ -93,3 +97,25 @@ VPN نفق شبكي، ولا يعطّل مستقبل GPS ولا يمنع است�
 - [سير بناء APK وAAB وقياس الأحجام](https://github.com/hisen7711ali-ctrl/Tor-phone/actions/runs/41702169900)
 - [سير توليد صور الأيقونة](https://github.com/hisen7711ali-ctrl/Tor-phone/actions/runs/41702169977)
 - [سير بناء مكتبات Onionmasq](https://github.com/hisen7711ali-ctrl/Tor-phone/actions/runs/41699948909)
+
+
+## Screenshots
+
+لقطات الشاشة غير مضافة بعد. أضف الصور لاحقًا داخل مجلد `screenshots/`، ثم حدّث المسارات التالية:
+
+| الشاشة | المسار المقترح |
+|---|---|
+| الشاشة الرئيسية | `screenshots/home.png` |
+| حالة الاتصال | `screenshots/connection-status.png` |
+| الإعدادات | `screenshots/settings.png` |
+| تقسيم النفق | `screenshots/split-tunneling.png` |
+
+عند إضافة الصور، أزل النصوص الحساسة وأي عناوين IP أو بيانات حسابات من اللقطات.
+
+## Roadmap
+
+خارطة الطريق التفصيلية ومراحل الاعتماد ومعايير الإنجاز والتقديرات موجودة في [PROJECT_PLAN.md](PROJECT_PLAN.md). المراحل المخطط لها ليست ميزات منفذة، ولا يبدأ العمل اللاحق قبل استكمال بوابة الاختبار المحددة في الخطة.
+
+## Privacy
+
+راجع [سياسة الخصوصية بالعربية والإنجليزية](PRIVACY_POLICY.md) و[سجل التغييرات](CHANGELOG.md). المشروع تجريبي ولا يدّعي أن ميزاته اجتازت اختبار هاتف شامل.
