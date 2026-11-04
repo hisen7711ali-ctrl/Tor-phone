@@ -1,6 +1,6 @@
 ---
-name: الإبلاغ عن خلل / Bug report
-about: أبلغ عن خلل قابل لإعادة الإنتاج في Tor-phone
+name: الإبلاغ عن خطأ / Bug report
+about: الإبلاغ عن مشكلة قابلة لإعادة الإنتاج في Tor-phone
 title: "[Bug] "
 labels: bug
 assignees: ""
@@ -8,8 +8,8 @@ assignees: ""
 
 ## العربية
 
-### وصف الخلل
-اكتب ما حدث بوضوح.
+### وصف المشكلة
+اكتب ما حدث بوضوح، دون تضمين بيانات شخصية أو أسرار.
 
 ### خطوات إعادة الإنتاج
 1.
@@ -20,25 +20,30 @@ assignees: ""
 ما الذي كنت تتوقع حدوثه؟
 
 ### السلوك الفعلي
-ما الذي حدث فعلًا؟ أرفق رسالة الخطأ إن وجدت.
+ما الذي حدث بدلًا منه؟
 
-### معلومات البيئة
+### معلومات الجهاز
 - طراز الجهاز:
-- إصدار Android:
+- إصدار Android ورقم البناء:
+- ABI: `arm64-v8a` / `armeabi-v7a` / غير معروف
 - إصدار التطبيق أو الالتزام:
-- ABI: arm64-v8a / armeabi-v7a
-- نوع الشبكة: Wi‑Fi / بيانات الهاتف
-- هل تستخدم Bridges أو Split Tunneling؟ اذكر ذلك دون نشر أسطر جسور خاصة.
+- نوع الشبكة: Wi‑Fi / بيانات الهاتف / أخرى
 
-### السجلات واللقطات
-أرفق مقتطفًا صغيرًا بعد إزالة عناوين IP والمعرّفات والبيانات الشخصية. لا ترفق كلمات مرور أو مفاتيح توقيع أو أسطر Bridges خاصة أو سجل تصفح.
+### السجلات والدليل
+أرفق رسالة الخطأ أو لقطة شاشة بعد إخفاء عناوين IP والمعرّفات والبيانات الشخصية. لا ترفق سجل تصفح أو محتوى حركة الشبكة أو كلمات مرور أو أسطر جسور خاصة.
+
+### هل يمكن إعادة المشكلة؟
+- [ ] دائمًا
+- [ ] أحيانًا
+- [ ] مرة واحدة فقط
+- [ ] لم أتمكن من إعادة إنتاجها
 
 ---
 
 ## English
 
-### Bug description
-Describe what happened.
+### Describe the problem
+Explain what happened. Do not include personal information or secrets.
 
 ### Steps to reproduce
 1.
@@ -46,18 +51,23 @@ Describe what happened.
 3.
 
 ### Expected behavior
-What did you expect?
+What did you expect to happen?
 
 ### Actual behavior
-What happened? Include the exact error if available.
+What happened instead?
 
-### Environment
+### Device information
 - Device model:
-- Android version:
+- Android version and build:
+- ABI: `arm64-v8a` / `armeabi-v7a` / unknown
 - App version or commit:
-- ABI: arm64-v8a / armeabi-v7a
-- Network: Wi-Fi / mobile data
-- Bridges or Split Tunneling in use? Do not disclose private bridge lines.
+- Network: Wi-Fi / mobile data / other
 
-### Logs and screenshots
-Attach a minimal, redacted excerpt. Remove IP addresses, identifiers, and personal data. Never attach passwords, signing keys, private bridge lines, or browsing history.
+### Logs and evidence
+Attach a redacted error message or screenshot. Remove IP addresses, identifiers, and personal data. Never attach browsing history, traffic contents, passwords, or private bridge lines.
+
+### Reproducibility
+- [ ] Always
+- [ ] Sometimes
+- [ ] Once
+- [ ] Unable to reproduce

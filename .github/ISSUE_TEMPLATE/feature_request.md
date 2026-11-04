@@ -1,6 +1,6 @@
 ---
 name: اقتراح ميزة / Feature request
-about: اقترح تحسينًا محددًا للمشروع
+about: اقتراح تحسين أو وظيفة جديدة للمشروع
 title: "[Feature] "
 labels: enhancement
 assignees: ""
@@ -9,41 +9,41 @@ assignees: ""
 ## العربية
 
 ### المشكلة أو الحاجة
-ما المشكلة التي تريد حلها؟
+ما المشكلة التي تريد حلها؟ ومن المتأثر بها؟
 
 ### الحل المقترح
-صف السلوك المطلوب دون فرض تنفيذ تقني مسبق.
+اشرح السلوك الذي تتوقعه، دون افتراض أن Android يسمح بكل الصلاحيات المطلوبة.
 
 ### البدائل التي فكرت بها
-هل توجد طريقة أخرى لحل المشكلة؟
+هل توجد طريقة أخرى لحل الحاجة؟
 
 ### الأثر والقيود
-- هل يؤثر الاقتراح على الخصوصية أو أمان الشبكة؟
-- هل يحتاج صلاحيات Android إضافية أو Shizuku أو Device Owner؟
-- هل يؤثر على حجم التطبيق أو استهلاك البطارية؟
-- هل يمكن اختباره على جهاز حقيقي؟
+- هل يتطلب التغيير صلاحيات Android إضافية؟
+- هل يؤثر في الخصوصية أو إخفاء الهوية؟
+- هل يتطلب تعديل Rust أو JNI أو واجهة Android؟
+- هل يمكن جعله اختياريًا مع بقاء الإعداد الافتراضي آمنًا؟
 
 ### معلومات إضافية
-أضف أمثلة أو رسومات عند الحاجة، دون بيانات شخصية أو أسرار.
+أضف رسومات أو أمثلة غير حساسة إن لزم. لا تنشر مفاتيح أو بيانات حسابات أو أسطر جسور خاصة.
 
 ---
 
 ## English
 
 ### Problem or need
-What problem should this solve?
+What problem should this solve, and who is affected?
 
 ### Proposed solution
-Describe the desired behavior without prescribing an implementation prematurely.
+Describe the expected behavior. Do not assume Android exposes every requested permission or capability.
 
 ### Alternatives considered
-What other approaches did you consider?
+Is there another way to address the need?
 
 ### Impact and constraints
-- Does this affect privacy or network security?
-- Does it require additional Android permissions, Shizuku, or Device Owner?
-- Could it affect APK size or battery usage?
-- Can it be tested on a real device?
+- Does this require additional Android permissions?
+- Could it affect privacy or anonymity?
+- Does it require changes to Rust, JNI, or the Android UI?
+- Can it remain optional with a safe default?
 
 ### Additional context
-Add examples or mockups if useful. Do not include personal data or secrets.
+Add non-sensitive examples or mockups if useful. Do not publish keys, account data, or private bridge lines.

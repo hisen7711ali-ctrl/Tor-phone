@@ -1,99 +1,119 @@
 # المساهمة في Tor-phone
 
-شكرًا لاهتمامك بالمساهمة. المشروع يتعامل مع توجيه الشبكة وخصوصية المستخدم؛ لذلك يجب أن تكون التغييرات صغيرة، قابلة للمراجعة، ومدعومة بدليل اختبار واضح. المشروع تجريبي، ولا يجوز وصف ميزة بأنها آمنة أو مكتملة لمجرد نجاح البناء.
+أهلًا بالمساهمين. Tor-phone مشروع تجريبي يجمع Android VPN مع محرك Tor عبر Arti وOnionmasq. الأولوية لصحة التوجيه والخصوصية، ثم سهولة الاستخدام. نجاح البناء لا يعني أن الاتصال أو منع التسرب اجتاز اختبار هاتف.
 
-## قبل البدء
+## قبل فتح Issue أو Pull Request
 
-1. افتح Issue واشرح المشكلة أو التغيير المقترح.
-2. تحقق من عدم وجود عمل متزامن على الملفات نفسها.
-3. ناقش التغييرات التي تمس مسار Tor أو VPN أو الصلاحيات قبل تنفيذها.
-4. لا تضع مفاتيح أو كلمات مرور أو سجلات شخصية أو أسطر Bridges خاصة في المستودع.
+1. ابحث في Issues وPull Requests المفتوحة لتجنب التكرار.
+2. وضّح المشكلة والنتيجة المتوقعة وخطوات إعادة الإنتاج.
+3. لا تنشر سجلات خام أو عناوين IP أو بيانات تصفح أو أسرار توقيع أو أسطر جسور خاصة.
+4. ناقش التغييرات التي تمس حدود الأمان أو تدفق VPN قبل تنفيذها.
 
-## استنساخ المشروع
+## قاعدة فصل المحرك عن الواجهة
 
-استنسخ المستودع مع الوحدة الفرعية:
+**لا تقبل Pull Request واحدًا يغيّر محرك Rust وواجهة Android معًا.**
 
-```bash
-git clone --recurse-submodules https://github.com/hisen7711ali-ctrl/Tor-phone.git
-cd Tor-phone
-```
+- تغييرات Rust/Onionmasq وملفات Cargo وJNI الأصلية تكون في Pull Request مستقل.
+- تغييرات Java/Kotlin/Compose وموارد Android تكون في Pull Request مستقل.
+- إذا احتاجت الميزة الطرفين، اقسمها إلى Pull Requests صغيرة ذات واجهة توافق موثقة، وادمج الجزء الأول قبل بناء الجزء الثاني فوقه.
+- السبب: تقليل تعارضات الدمج، وتسهيل مراجعة الأمان، وعزل الأعطال عن مصدرها.
+- لا تعدّل مصدر الوحدة الفرعية المثبتة بصمت؛ اشرح مصدر التغيير ورقم الالتزام وطريقة تحديث التثبيت.
 
-إذا كان المستودع موجودًا لديك مسبقًا:
+## إعداد بيئة البناء
 
-```bash
-git submodule update --init --recursive
-```
-
-## متطلبات البناء
+### المتطلبات
 
 - Java 17.
 - Android SDK 35 وAndroid Build Tools 35.0.0.
 - Gradle 8.9.
 - Android NDK r27d، الإصدار `27.3.13750724`.
 - Rust 1.91.0.
-- `cargo-ndk` الإصدار 3.5.4.
 - أهداف Rust: `aarch64-linux-android` و`armv7-linux-androideabi`.
+- `cargo-ndk` الإصدار 3.5.4.
+- استنساخ الوحدة الفرعية المثبتة.
 
-تفاصيل بناء المكتبات الأصلية موضحة في [BUILD.md](BUILD.md). لا تعدّل مرجع الوحدة الفرعية أو ملفات المصدر upstream دون توثيق سبب التغيير.
+### استنساخ المشروع
 
-## بناء المكتبات الأصلية
+```bash
+git clone --recurse-submodules https://github.com/hisen7711ali-ctrl/Tor-phone.git
+cd Tor-phone
+git submodule status
+```
 
-يُنفذ بناء Android الأصلي من خلال سير العمل:
+تحقق من أن الوحدة الفرعية على الالتزام المثبت في `third_party/onionmasq/VERSION` قبل البناء.
 
-`Build Onionmasq native libraries`
+### بناء المكتبات الأصلية
 
-يمكن تشغيله يدويًا من تبويب Actions بعد التأكد من تثبيت NDK وRust والأهداف المطلوبة. ينتج البناء مكتبات ABI منفصلة. يجب تسجيل أحجام الملفات قبل وبعد أي تحسين، وعدم استبدال مكتبات ABI بملف معماري غير مطابق.
+من جذر المشروع شغّل سير العمل **Build Onionmasq native libraries** عبر GitHub Actions، أو جهّز NDK وRust والأهداف المذكورة أعلاه ثم نفّذ:
 
-## بناء التطبيق
+```bash
+cd third_party/onionmasq/vendor
+./build-ndk.sh arm64-v8a
+./build-ndk.sh armeabi-v7a
+```
 
-بعد توفير المكتبات الأصلية:
+يجب أن تُبنى المكتبات في وضع Release. لا ترفع مكتبات Debug أو ملفات غير مكتملة للتوزيع. يستخدم CI ملف إعداد البناء المثبت ويقيس أحجام المكتبات بعد إزالة الرموز.
+
+### بناء تطبيق Android
+
+من جذر المشروع:
 
 ```bash
 gradle --no-daemon assembleDebug
 ```
 
-ولإنشاء حزم Release/AAB محليًا:
+لبناء حزم Release وAAB محليًا:
 
 ```bash
 gradle --no-daemon assembleRelease bundleRelease
 ```
 
-قد تتطلب عملية Release مفتاح توقيع خاصًا. راجع قسم Release Signing في [BUILD.md](BUILD.md). لا تضع keystore داخل المستودع.
+توقيع Release للنشر يتطلب مفتاحًا خاصًا بصاحب التطبيق. راجع [BUILD.md](BUILD.md)؛ لا تضع keystore أو كلمات مروره في المستودع.
 
-## الاختبارات
+## الاختبارات المطلوبة
 
-- نفّذ فحوص Rust المناسبة للمصدر الذي غيّرته، مثل `cargo fmt --all -- --check` و`cargo test` إذا كانت حزم workspace تدعمها.
-- نفّذ بناء Android للمعماريات المتأثرة.
-- اختبر على جهاز حقيقي عند تغيير مسار VPN أو Tor أو DNS أو Bridges أو دورة حياة الخدمة.
-- راجع [TEST_PLAN.md](TEST_PLAN.md) و[TEST.md](TEST.md).
-- وثّق الجهاز وإصدار Android وABI وخطوات إعادة الإنتاج والنتائج الفعلية.
-- لا تكتب «نجح» إذا لم يُنفذ الاختبار. اكتب «لم يُختبر» أو «غير قابل للاختبار» عند الحاجة.
+### فحوص Rust
 
-## أسلوب الكود والمراجعة
+```bash
+cd third_party/onionmasq/vendor
+cargo fmt --check --package onionmasq-mobile
+cargo check -p onionmasq-mobile --target aarch64-linux-android --release --features pluggable-transports
+cargo check -p onionmasq-mobile --target armv7-linux-androideabi --release --features pluggable-transports
+```
 
-- اتبع تنسيق Rust الحالي، واستخدم `rustfmt` دون تغييرات تنسيق واسعة غير مرتبطة.
-- حافظ على أسماء واضحة وأخطاء قابلة للتشخيص، وتجنب تسجيل بيانات المرور أو الأسرار.
-- لا تضف اعتمادًا جديدًا أو ميزة Cargo دون توضيح أثرها على الحجم وسلسلة التوريد.
-- لا تدّعِ أن تغييرًا في مسارات الشبكة يمنع التسرب قبل اختبارات الجهاز.
-- حدّث الوثائق وسجل التغييرات عند تغيير السلوك أو حدود الخصوصية.
-- اجعل كل Pull Request مركزًا على هدف واحد، مع وصف الملفات والاختبارات والقيود.
+قد تتطلب أوامر الفحص إعداد NDK وبيئة الربط الخاصة بأهداف Android. إذا تعذر تشغيلها محليًا، استخدم سير CI ولا تدّع نجاح الفحص.
 
-## قاعدة فصل المحرك عن الواجهة
+### فحوص Android
 
-**لا تُقبل Pull Requests تجمع في الوقت نفسه تغييرات محرك Rust وتغييرات واجهة Android (Java/Kotlin/Compose).** افصلها إلى طلبين مستقلين لتقليل تعارضات الدمج وتسهيل مراجعة المخاطر. إذا كان الربط بينهما ضروريًا، نسّق واجهة التكامل أولًا، ثم قدّم كل جانب في PR منفصل.
+```bash
+gradle --no-daemon testDebugUnitTest assembleDebug
+```
 
-## Pull Request checklist
+راجع كذلك [TEST_PLAN.md](TEST_PLAN.md) و[TEST.md](TEST.md). اختبارات الجهاز تشمل موافقة VPN، والتحقق من Tor، وتسرب DNS وIPv6، وتوقف التطبيق، وتبديل الشبكات، وإعادة التشغيل، والسكون، والبطارية.
 
-- [ ] شرحت المشكلة والسبب.
-- [ ] حددت الملفات المتأثرة ولم أخلط تغييرات المحرك والواجهة في PR واحد.
-- [ ] لم أضف أسرارًا أو بيانات مستخدم.
-- [ ] نفذت الفحوص والبناء المناسبين أو شرحت لماذا تعذر ذلك.
-- [ ] أرفقت نتائج الاختبار الفعلية، وميّزت غير المختبر.
-- [ ] حدثت الوثائق عند الحاجة.
-- [ ] راجعت حجم مكتبات `.so` وAPK إذا تأثرت التبعيات أو إعدادات البناء.
+**لا تكتب أن اختبار الهاتف نجح ما لم يُنفذ على هاتف فعلي وتُرفق نتيجة قابلة للمراجعة.**
 
-## English summary
+## أسلوب الشيفرة
 
-Contributions should be small, reviewed, and backed by reproducible evidence. Clone with submodules, use the pinned Java/Android SDK/NDK/Rust toolchain documented in BUILD.md, run relevant Rust checks and Android builds, and test network behavior on real devices when applicable. Never commit keystores, credentials, private bridge lines, or personal logs.
+- اتبع تنسيق Rust الحالي وشغّل `cargo fmt --check`.
+- استخدم أسماء واضحة، وتغييرات صغيرة، وتعليقات تشرح السبب لا ما تقوله الشيفرة حرفيًا.
+- لا تضف سجلات تحتوي عناوين الوجهات أو محتوى المرور أو أسرار المستخدم.
+- لا تستخدم `unwrap()` أو `expect()` في مسارات تشغيل حساسة جديدة دون مبرر ومعالجة واضحة للفشل.
+- لا تعرض حالة «متصل» أو «محمي» اعتمادًا على ضغط زر أو حالة واجهة فقط؛ اربطها بإشارة مؤكدة من المصدر الفعلي.
+- حافظ على التوافق مع ABI ‏`arm64-v8a` و`armeabi-v7a` ما لم يشرح التغيير خلاف ذلك.
+- لا تغيّر إعدادات Release لتجاوز فشل الاختبارات أو تعطيل التحسينات دون سبب موثق.
+- لا تضف ميزة تتطلب Root. Shizuku ليس Root ولا يجوز وصفه بذلك.
 
-**Do not submit a single PR that changes both the Rust engine and Android UI (Java/Kotlin/Compose).** Split those concerns into separate PRs to reduce merge conflicts and make security review tractable. Never claim a feature is secure or fully working based on a successful build alone.
+## وصف Pull Request
+
+يجب أن يتضمن كل Pull Request:
+- ملخص التغيير وسبب الحاجة إليه.
+- الملفات والمكونات المتأثرة.
+- الأوامر التي نُفذت ونتائجها الفعلية.
+- ABI وإصدار Android عند وجود اختبار جهاز.
+- الأثر الأمني والخصوصي والقيود المعروفة.
+- تأكيد عدم تضمين أسرار أو سجلات شخصية.
+
+## الترخيص
+
+قبل إرسال مساهمة، راجع تراخيص المكونات الأصلية والاعتمادات. وجود ترخيص لـ Onionmasq لا يحدد تلقائيًا ترخيص التطبيق كاملًا.
