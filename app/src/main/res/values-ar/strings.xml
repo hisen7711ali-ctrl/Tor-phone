@@ -53,4 +53,6 @@
 <string name="notification_channel_name">اتصال Tor-phone</string>
 <string name="notification_channel_description">حالة محرك Tor وواجهة VPN</string>
 <string name="status_vpn_permission_revoked">توقف اتصال VPN بعد سحب الإذن.</string>
+<string name="bridges_support_title">Bridges · obfs4</string>
+<string name="bridges_support_detail">غير مدعوم في هذا الإصدار. يحتاج Arti إلى ملف تشغيل Pluggable Transport وإعدادات Bridge فعلية؛ وهما غير مضمّنين أو مربوطين بالتطبيق حاليًا. لن نضيف زرًا شكليًا لا يعمل. يتطلب R4 دمج obfs4 متوافق واختباره.</string>
 </resources>
