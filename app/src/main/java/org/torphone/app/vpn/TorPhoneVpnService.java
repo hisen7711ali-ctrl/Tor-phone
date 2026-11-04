@@ -98,6 +98,21 @@ public final class TorPhoneVpnService extends VpnService {
             publishStatus(getString(R.string.state_disconnected));
             startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.notification_engine_starting)));
             mainHandler.postDelayed(() -> {
+                if (packetRouter.init(getApplicationContext()) != OnionmasqRouter.INIT_OK) {
+                    publishStatus(getString(R.string.status_engine_init_failed));
+                    stopSelf(startId);
+                    return;
+                }
+                if (!onionmasqBound) {
+                    try {
+                        OnionMasq.bindVPNService(TorPhoneVpnService.class);
+                        onionmasqBound = true;
+                    } catch (Throwable error) {
+                        publishStatus(getString(R.string.status_socket_protection_failed));
+                        stopSelf(startId);
+                        return;
+                    }
+                }
                 startupInProgress.set(false);
                 if (startupInProgress.compareAndSet(false, true)) {
                     new Thread(() -> startTunnel(startId), "TorPhone-VPN-Restart").start();
