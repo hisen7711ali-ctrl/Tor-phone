@@ -44,9 +44,7 @@ public final class OnionmasqRouter implements PacketRouter {
 
     @Override
     public synchronized int init(Context context) {
-        if (!nativeLibraryLoaded || context == null) {
-            return INIT_FAILED;
-        }
+        if (!nativeLibraryLoaded || context == null) return INIT_FAILED;
         try {
             OnionMasq.init(context.getApplicationContext());
             initialized = true;
@@ -64,30 +62,29 @@ public final class OnionmasqRouter implements PacketRouter {
 
     @Override
     public void start(ParcelFileDescriptor tunInterface) throws IOException {
-        if (!initialized) {
-            throw new IOException("Onionmasq is not initialized");
-        }
-        if (tunInterface == null) {
-            throw new IOException("VPN TUN descriptor is missing");
-        }
+        start(tunInterface, null);
+    }
+
+    @Override
+    public void start(ParcelFileDescriptor tunInterface, String bridgeLines) throws IOException {
+        if (!initialized) throw new IOException("Onionmasq is not initialized");
+        if (tunInterface == null) throw new IOException("VPN TUN descriptor is missing");
         if (OnionMasq.isRunning()) {
             running = true;
             return;
         }
 
+        final String normalizedBridgeLines =
+                bridgeLines == null || bridgeLines.trim().isEmpty() ? null : bridgeLines.trim();
         stopping.set(false);
         failure = null;
         final int ownedFd = tunInterface.detachFd();
         engineThread = new Thread(() -> {
             try {
-                OnionMasq.start(ownedFd);
-                if (!stopping.get()) {
-                    reportFailure(new IOException("Onionmasq proxy stopped unexpectedly"));
-                }
+                OnionMasq.start(ownedFd, normalizedBridgeLines);
+                if (!stopping.get()) reportFailure(new IOException("Onionmasq proxy stopped unexpectedly"));
             } catch (Throwable error) {
-                if (!stopping.get()) {
-                    reportFailure(error);
-                }
+                if (!stopping.get()) reportFailure(error);
             }
         }, "TorPhone-Onionmasq");
         engineThread.start();
@@ -95,9 +92,7 @@ public final class OnionmasqRouter implements PacketRouter {
         long deadline = System.currentTimeMillis() + START_TIMEOUT_MS;
         while (System.currentTimeMillis() < deadline) {
             Throwable startFailure = failure;
-            if (startFailure != null) {
-                throw new IOException("Onionmasq failed to start", startFailure);
-            }
+            if (startFailure != null) throw new IOException("Onionmasq failed to start", startFailure);
             try {
                 if (OnionMasq.isRunning()) {
                     running = true;
@@ -108,9 +103,7 @@ public final class OnionmasqRouter implements PacketRouter {
                 throw new IOException("Unable to query Onionmasq state", error);
             }
             Thread thread = engineThread;
-            if (thread == null || !thread.isAlive()) {
-                throw new IOException("Onionmasq exited before becoming ready");
-            }
+            if (thread == null || !thread.isAlive()) throw new IOException("Onionmasq exited before becoming ready");
             try {
                 Thread.sleep(100L);
             } catch (InterruptedException interrupted) {
@@ -119,7 +112,6 @@ public final class OnionmasqRouter implements PacketRouter {
                 throw new IOException("Interrupted while starting Onionmasq", interrupted);
             }
         }
-
         stop();
         throw new IOException("Onionmasq did not become ready before the startup timeout");
     }
@@ -135,24 +127,16 @@ public final class OnionmasqRouter implements PacketRouter {
         stopping.set(true);
         running = false;
         if (initialized) {
-            try {
-                OnionMasq.stop();
-            } catch (Throwable ignored) {
-                // Shutdown remains best-effort; the VPN service still closes TUN.
-            }
+            try { OnionMasq.stop(); } catch (Throwable ignored) { }
         }
         Thread thread = engineThread;
         engineThread = null;
-        if (thread != null && thread != Thread.currentThread()) {
-            thread.interrupt();
-        }
+        if (thread != null && thread != Thread.currentThread()) thread.interrupt();
     }
 
     @Override
     public boolean isRunning() {
-        if (!initialized || !nativeLibraryLoaded) {
-            return false;
-        }
+        if (!initialized || !nativeLibraryLoaded) return false;
         try {
             running = OnionMasq.isRunning();
         } catch (Throwable error) {
