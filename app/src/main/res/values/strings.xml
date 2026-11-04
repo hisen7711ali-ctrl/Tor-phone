@@ -1,5 +1,6 @@
 <resources>
 <string name="app_name">Tor-phone</string>
+<string name="open_proton_ui">Open Proton-style UI</string>
 <string name="brand_name">TOR / PHONE</string>
 <string name="dashboard_title">Privacy,\nunder your control.</string>
 <string name="dashboard_subtitle">لوحة تحكم الخصوصية والاتصال</string>
@@ -54,5 +55,5 @@
 <string name="notification_channel_description">Tor engine and VPN interface status</string>
 <string name="status_vpn_permission_revoked">VPN connection stopped because permission was revoked.</string>
 <string name="bridges_support_title">Bridges · obfs4</string>
-<string name="bridges_support_detail">The pinned Onionmasq native build includes pluggable-transport support (obfs4/Snowflake), but this Android app currently starts OnionMasq without passing bridgeLines. The transport is therefore not configurable or active from this UI. Wiring it requires changing the Onionmasq adapter/start call, which is intentionally out of scope under the current no-adapter-change constraint. R4 integration and device testing are required.</string>
+<string name="bridges_support_detail">obfs4 bridge lines can now be entered in Privacy Settings and passed to OnionMasq.start(fd, bridgeLines). Bridges may help with DPI blocking, but success depends on valid, reachable bridges and network conditions.</string>
 </resources>
