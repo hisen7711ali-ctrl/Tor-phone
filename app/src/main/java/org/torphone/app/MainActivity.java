@@ -158,6 +158,7 @@ public final class MainActivity extends Activity {
         info(page, R.string.server_configuration_title, R.string.server_configuration_detail, primary, secondary);
         info(page, R.string.location_privacy_title, R.string.location_privacy_detail, primary, secondary);
         info(page, R.string.kill_switch_title, R.string.kill_switch_detail, primary, secondary);
+        info(page, R.string.bridges_support_title, R.string.bridges_support_detail, primary, secondary);
 
         TextView settings = text(R.string.settings_title, 11, secondary, true);
         settings.setLetterSpacing(.12f);
