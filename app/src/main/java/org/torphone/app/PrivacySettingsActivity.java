@@ -147,8 +147,12 @@ public final class PrivacySettingsActivity extends Activity {
         for (String line : raw.split("\\r?\\n")) {
             String value = line.trim();
             if (value.isEmpty() || value.startsWith("#")) continue;
-            if (!value.startsWith("obfs4 ")) {
-                Toast.makeText(this, "كل سطر يجب أن يبدأ بـ obfs4", Toast.LENGTH_LONG).show();
+            String[] parts = value.split("\\s+");
+            if (parts.length < 5 || !"obfs4".equals(parts[0])
+                    || !parts[1].matches(".+:\\\\d+")
+                    || !parts[2].matches("[A-Fa-f0-9]{40}")
+                    || !value.contains("cert=") || !value.contains("iat-mode=")) {
+                Toast.makeText(this, "صيغة Bridge غير صحيحة. استخدم obfs4 host:port fingerprint cert=... iat-mode=0", Toast.LENGTH_LONG).show();
                 return;
             }
             validLines.add(value);
@@ -160,8 +164,6 @@ public final class PrivacySettingsActivity extends Activity {
 
         int rotationMinutes = rotationValues[rotationSpinner.getSelectedItemPosition()];
         boolean sticky = stickySwitch.isChecked();
-        if (sticky) rotationMinutes = 0;
-
         getSharedPreferences(PREFS, MODE_PRIVATE).edit()
                 .putBoolean("use_bridges", useBridges)
                 .putString("bridge_lines", String.join("\n", validLines))
