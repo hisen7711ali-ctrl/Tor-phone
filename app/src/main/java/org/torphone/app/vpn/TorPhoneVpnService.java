@@ -100,27 +100,7 @@ public final class TorPhoneVpnService extends VpnService {
             stopTunnel();
             publishStatus(getString(R.string.state_disconnected));
             startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.notification_engine_starting)));
-            mainHandler.postDelayed(() -> {
-                if (packetRouter.init(getApplicationContext()) != OnionmasqRouter.INIT_OK) {
-                    publishStatus(getString(R.string.status_engine_init_failed));
-                    stopSelf(startId);
-                    return;
-                }
-                if (!onionmasqBound) {
-                    try {
-                        OnionMasq.bindVPNService(TorPhoneVpnService.class);
-                        onionmasqBound = true;
-                    } catch (Throwable error) {
-                        publishStatus(getString(R.string.status_socket_protection_failed));
-                        stopSelf(startId);
-                        return;
-                    }
-                }
-                startupInProgress.set(false);
-                if (startupInProgress.compareAndSet(false, true)) {
-                    new Thread(() -> startTunnel(startId), "TorPhone-VPN-Restart").start();
-                }
-            }, 1200L);
+            scheduleRestart(startId, 0);
             return START_NOT_STICKY;
         }
 
@@ -160,6 +140,36 @@ public final class TorPhoneVpnService extends VpnService {
             new Thread(() -> startTunnel(startId), "TorPhone-VPN-Startup").start();
         }
         return START_NOT_STICKY;
+    }
+
+    private void scheduleRestart(int startId, int attempts) {
+        if (startupInProgress.get()) {
+            if (attempts >= 80) {
+                publishStatus(getString(R.string.status_engine_failed));
+                stopSelf(startId);
+                return;
+            }
+            mainHandler.postDelayed(() -> scheduleRestart(startId, attempts + 1), 250L);
+            return;
+        }
+        if (packetRouter.init(getApplicationContext()) != OnionmasqRouter.INIT_OK) {
+            publishStatus(getString(R.string.status_engine_init_failed));
+            stopSelf(startId);
+            return;
+        }
+        if (!onionmasqBound) {
+            try {
+                OnionMasq.bindVPNService(TorPhoneVpnService.class);
+                onionmasqBound = true;
+            } catch (Throwable error) {
+                publishStatus(getString(R.string.status_socket_protection_failed));
+                stopSelf(startId);
+                return;
+            }
+        }
+        if (startupInProgress.compareAndSet(false, true)) {
+            new Thread(() -> startTunnel(startId), "TorPhone-VPN-Restart").start();
+        }
     }
 
     private void startTunnel(int startId) {
