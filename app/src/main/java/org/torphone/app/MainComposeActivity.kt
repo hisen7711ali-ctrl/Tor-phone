@@ -60,6 +60,7 @@ class MainComposeActivity : ComponentActivity() {
     private var currentStatus by mutableStateOf("")
     private var bytesSent by mutableLongStateOf(0L)
     private var bytesReceived by mutableLongStateOf(0L)
+    private var exitIp by mutableStateOf("")
     private var stickyExit by mutableStateOf(false)
     private var receiverRegistered = false
 
@@ -69,6 +70,7 @@ class MainComposeActivity : ComponentActivity() {
             currentStatus = intent.getStringExtra(TorPhoneVpnService.EXTRA_STATUS).orEmpty()
             bytesSent = intent.getLongExtra(TorPhoneVpnService.EXTRA_SENT, 0L)
             bytesReceived = intent.getLongExtra(TorPhoneVpnService.EXTRA_RECEIVED, 0L)
+            exitIp = intent.getStringExtra(TorPhoneVpnService.EXTRA_EXIT_IP).orEmpty()
         }
     }
 
@@ -80,6 +82,7 @@ class MainComposeActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         ThemePrefs.apply(this)
         currentStatus = TorPhoneVpnService.getLastStatus().orEmpty()
+        exitIp = TorPhoneVpnService.getLastVerifiedExitIp()
         stickyExit = getSharedPreferences("torphone_preferences", MODE_PRIVATE)
             .getBoolean("privacy_sticky_exit", false)
 
@@ -106,6 +109,7 @@ class MainComposeActivity : ComponentActivity() {
                     status = currentStatus,
                     sent = bytesSent,
                     received = bytesReceived,
+                    exitIp = exitIp,
                     sticky = stickyExit,
                     onTheme = { ThemePrefs.toggle(this); recreate() },
                     onConnect = { openConnectionControls() },
@@ -156,6 +160,7 @@ class MainComposeActivity : ComponentActivity() {
         }
         receiverRegistered = true
         currentStatus = TorPhoneVpnService.getLastStatus().orEmpty()
+        exitIp = TorPhoneVpnService.getLastVerifiedExitIp()
     }
 
     override fun onStop() {
@@ -173,6 +178,7 @@ private fun DashboardScreen(
     status: String,
     sent: Long,
     received: Long,
+    exitIp: String,
     sticky: Boolean,
     onTheme: () -> Unit,
     onConnect: () -> Unit,
@@ -284,6 +290,12 @@ private fun DashboardScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center
             )
+            if (protected && exitIp.isNotBlank()) {
+                Text("Status: Protected · Tor Exit: $exitIp",
+                    color = MaterialTheme.colorScheme.secondary,
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center)
+            }
         }
 
         Card(
