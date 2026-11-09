@@ -59,7 +59,7 @@ jobs:
           echo "CARGO_PROFILE_RELEASE_STRIP=symbols" >> "$GITHUB_ENV"
           echo "CARGO_PROFILE_RELEASE_OPT_LEVEL=z" >> "$GITHUB_ENV"
           echo "CARGO_PROFILE_RELEASE_LTO=fat" >> "$GITHUB_ENV"
-          echo "CARGO_PROFILE_RELEASE_PANIC=abort" >> "$GITHUB_ENV"
+          echo "CARGO_PROFILE_RELEASE_PANIC=unwind" >> "$GITHUB_ENV"
           echo "CARGO_PROFILE_RELEASE_OVERFLOW_CHECKS=false" >> "$GITHUB_ENV"
           echo "CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1" >> "$GITHUB_ENV"
 
